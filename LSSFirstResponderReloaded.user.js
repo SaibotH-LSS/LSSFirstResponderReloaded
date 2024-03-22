@@ -181,7 +181,7 @@
     if (!localStorage.fr_dispatchSetup) localStorage.fr_dispatchSetup = JSON.stringify({ "dispatchId": [], "useIt": false, "additionalBuildings": [] });
 
     // Anlegen und beschreiben diverser Variablen
-    var fLoggingOn = true;
+    var fLoggingOn = false;
     var aVehicleTypes = [];
     var frSettings = JSON.parse(localStorage.firstResponder);
     var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
