@@ -5,7 +5,7 @@ Dieses Skript dient als Erweiterung für die Webseiten des Leitstellenspiels.
 Die Ursprüngliche Version wurde von JuMaHo sowie DrTraxx geschrieben und in diesem Skript wieder lauffähig gemacht. 
 Des Weiteren wurden Verbesserungen hinzugefügt.
 
-Ich übernehme keinerlei Garantie, dass dieses Skript funktioniert. Die falsche Nutzung dieses Skripts oder die weiter automatisierung dieses Skript auf Client Seite kann zur Blockierung des Benutzeraccounts führen. ich übernehme hierfür keinerlei Haftung! 
+Ich übernehme keinerlei Garantie, dass dieses Skript funktioniert. Die falsche Nutzung dieses Skripts oder die weitere Automatisierung dieses Skript auf Benutzer-Seite kann zur Blockierung des Benutzeraccounts führen! Ich übernehme hierfür keinerlei Haftung! 
 
 !!! Die Nutzung ist also auf eigene Gefahr !!!
 
