@@ -20,6 +20,6 @@ Verbesserungen (Im vergleich zum Skript von DrTraxx):
   -  Update URL hinzugefügt
 
 Bekannte Fehler:
-  -  Aktuell nur offiziell für leitstellenspiel.de freigegeben (Anderweitige Nutzung auf eigene Gefahr)
+  -  Aktuell nur offiziell für leitstellenspiel.de freigegeben (Internationale Nutzung wird nicht unterstützt)
   -  Fahrzeit wird über eine Verzögerung in die AAO geschrieben. Dies kann bei längeren Ladezeiten dazu führen, dass die zeit wieder überschrieben wird.
   -  Daten aus LSSM V4 API werden bei jedem Ausführen angepasst damit die Daten für das Skript nutzbar sind. (sollte wie die Datenabfrage nur alle 5 Minuten erfolgen)
