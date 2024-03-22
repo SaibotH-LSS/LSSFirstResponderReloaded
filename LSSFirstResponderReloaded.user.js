@@ -4,10 +4,10 @@
 // @version      1.0.0
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
-// @homepage     https://github.com/SaibotH-LSS/-LSS-FirstResponder
-// @homepageURL  https://github.com/SaibotH-LSS/-LSS-FirstResponder
-// @supportURL   https://github.com/SaibotH-LSS/-LSS-FirstResponder/issues
-// @updateURL    https://raw.githubusercontent.com/SaibotH-LSS/-LSS-FirstResponder/main/firstResponder.user.js
+// @homepage     https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
+// @homepageURL  https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
+// @supportURL   https://github.com/SaibotH-LSS/LSSFirstResponderReloaded/issues
+// @updateURL    https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
 // @icon         https://www.leitstellenspiel.de/favicon.ico
 // @match        *://www.leitstellenspiel.de/missions/*
 // @match        *://www.leitstellenspiel.de/aaos/*/edit
@@ -25,6 +25,50 @@
 (async function() {
     'use strict';
 
+    // ######################
+    // Funktionsdeklarationen
+    // ######################
+
+    // Fügt die Zeit zum AAO Button hinzu
+    function setAaoTime() {
+        $(".vehicle_checkbox").each(function() {
+            var vType = +$(this).attr("vehicle_type_id"); // Fahrzeug Typ ID
+            var vId = $(this).attr("value"); //Fahrzeug ID
+            var lstId = +$(this).attr("building_id").split("_")[1]; //Leitstellen ID
+            var buId = +$(this).attr("building_id").split("_")[0]; // Gebäude ID
+            var timeAttr = $("#vehicle_sort_" + vId).attr("timevalue");
+
+            if (timeAttr == undefined) {
+                logging("Zeitattribut ist nicht vorhanden!");
+                return false;
+            }
+
+            var time = parseInt(timeAttr);
+
+            if (frSettings.vehicleTypes[lang].includes(vType) && //Fahrzeugtyp wurde ausgewählt UND
+                !$("#vehicle_checkbox_" + vId)[0].checked && // Checkbox ist NICHT angewählt UND
+                !$("#vehicle_checkbox_" + vId)[0].disabled && // Checkbox ist NICHT deaktiviert UND
+                (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
+
+                document.getElementById("aao_timer_" + frSettings.aaoId[lang]).innerText = formatTime(time);
+                logging("Zeit hinzugefügt");
+                return false; // Beendet die Suche nach dem First Responder
+            }
+        });
+    }
+
+    // Loggingfunktion die nur ausgeführt wird wenn bLoggingOn true ist
+    function logging(message,type) {
+        if (fLoggingOn) {
+            if(type === undefined){
+                console.log("FirstResponderReloaded Logging:",message);
+            }
+            else {
+                console.log("FirstResponderReloaded Objektlogging: ",type,message);
+            }
+        }
+    }
+
     // Funktion zum Hinzufügen von Prefixen zum Fahrzeugnamen. Priorität dient dazu gewisse Fahrzeuge z.B. dem Rettungsdienst zuzuweisen anstatt der Feuerwehr da das entsprechende Fahrzeug in beiden Wachen stationiert sein kann.
     function updateCaptionPrefix(vehicle) {
         const buildingMap = [
@@ -41,18 +85,25 @@
 
         // Sortiere buildingMap nach Priorität
         const sortedBuildingMap = buildingMap.sort((a, b) => a.priority - b.priority);
+        let prefixFound = false; // Flag, um zu überprüfen, ob ein Präfix gefunden wurde
 
         for (const entry of sortedBuildingMap) {
             if (possibleBuildings.some(building => entry.buildings.includes(building))) {
                 // Wenn mindestens ein Gebäude dem aktuellen Präfix entspricht,
                 // füge den Präfix zur Caption hinzu
                 vehicle.caption = entry.prefix + caption;
+                prefixFound = true;
                 break; // Da nur ein Präfix hinzugefügt werden soll, brechen wir die Schleife ab.
-            }
-            // Wenn kein Prefix gefunden wurde wird ZZZ als Prefix genutzt.
+            };
+        };
+
+        // Wenn kein Prefix gefunden wurde wird ZZZ als Prefix genutzt.
+        if (!prefixFound) {
+            logging(`Kein Prefix für Fahrzeug gefunden! Fahrzeugname: ${caption}`);
             vehicle.caption = "ZZZ - " + caption;
         }
-    }
+
+    };
 
     // Funktion um die Fahrzeugdaten aus lss-manager zu laden und diese so zu bearbeiten, dass der Code von DrTraxx weiterhin funktioniert
     async function getVehicleTypes(lang) {
@@ -80,26 +131,9 @@
         });
 
         return jsObject;
+
     }
 
-    // Vorbereitung der Einstellungsvariablen im lokalen Speicher, wenn diese nicht vorhanden sind
-    if (!localStorage.firstResponder) localStorage.firstResponder = JSON.stringify({ "vehicleTypes": {}, "aaoId": {} });
-    if (!localStorage.fr_dispatchSetup) localStorage.fr_dispatchSetup = JSON.stringify({ "dispatchId": [], "useIt": false, "additionalBuildings": [] });
-
-    // Anlegen und beschreiben diverser Variablen
-    var aVehicleTypes = [];
-    var frSettings = JSON.parse(localStorage.firstResponder);
-    var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
-    var lang = I18n.locale;
-    var aBuildings = await $.getJSON('/api/buildings');
-    var jsKeyCode = 86; // 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
-    
-    //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
-    aVehicleTypes = await getVehicleTypes(lang);
-
-    if (!frSettings.vehicleTypes[lang]) frSettings.vehicleTypes[lang] = [];
-    if (!dispatchSetup.additionalBuildings) dispatchSetup.additionalBuildings = []; // Wird schon bei der Initialisierung in localStorage.fr_dispatchSetup geschrieben. Sollte dies durch eine alte Version jedoch schon passiert sein, könnte der EIntrag fehlen.
-    
     // Je nach trigger werden die Namen oder die IDs der Fahrzeuge als Array ausgegeben.
     function mapVehicles(arrClasses, trigger) {
         var returnValue = [];
@@ -130,6 +164,42 @@
         return returnValue;
     }
 
+    function formatTime(seconds) {
+        var minutes = Math.floor(seconds / 60);
+        var remainingSeconds = seconds % 60;
+
+        // Add leading zeros if the number of minutes or seconds is single digit
+        var formattedMinutes = (minutes < 10) ? "0" + minutes : minutes;
+        var formattedSeconds = (remainingSeconds < 10) ? "0" + remainingSeconds : remainingSeconds;
+
+        return formattedMinutes + ":" + formattedSeconds;
+    };
+
+    // Vorbereitung der Einstellungsvariablen im lokalen Speicher, wenn diese nicht vorhanden sind
+    if (!localStorage.firstResponder) localStorage.firstResponder = JSON.stringify({ "vehicleTypes": {}, "aaoId": {} });
+    if (!localStorage.fr_dispatchSetup) localStorage.fr_dispatchSetup = JSON.stringify({ "dispatchId": [], "useIt": false, "additionalBuildings": [] });
+
+    // Anlegen und beschreiben diverser Variablen
+    var fLoggingOn = true;
+    var aVehicleTypes = [];
+    var frSettings = JSON.parse(localStorage.firstResponder);
+    var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
+    var lang = I18n.locale;
+    var aBuildings = await $.getJSON('/api/buildings');
+    var jsKeyCode = 86; // 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
+
+    // Schreiben des Scriptstarts ins Log
+    logging("Wird ausgeführt!");
+
+    //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
+    aVehicleTypes = await getVehicleTypes(lang);
+
+    // Schreiben der Fahrzeugtypen ins Log
+    logging(aVehicleTypes,"aVehicleTypes");
+
+    if (!frSettings.vehicleTypes[lang]) frSettings.vehicleTypes[lang] = [];
+    if (!dispatchSetup.additionalBuildings) dispatchSetup.additionalBuildings = []; // Wird schon bei der Initialisierung in localStorage.fr_dispatchSetup geschrieben. Sollte dies durch eine alte Version jedoch schon passiert sein, könnte der EIntrag fehlen.
+
     // Fügt in der AAO Bearbeitung vor der ersten Checkbox eine eigene Check Box ein. Ist die entsprechende AAO in den Settings gespeichert wird das Häckchen gesetzt.
     if (window.location.pathname.includes("aaos") && window.location.pathname.includes("edit")) {
         $(".boolean.optional.checkbox")
@@ -137,7 +207,7 @@
                     <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frSettings.aaoId[lang]) ? "checked" : "" }>
                     ${ lang == "de_DE" ? "Diese ID für den First Responder nutzen." : "Use this id for FirstResponder." }
                     </label>`);
-        }
+    }
 
     //  Wird ausgeführt wenn es ein Einsatzfenster ist
     if (window.location.pathname.includes("missions")) {
@@ -196,22 +266,22 @@
                         </div>
                         </div>
                         </div>`);
-            }
-
-            // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
-            for (i in arrVehicles) {
-                $("#frSelectVehicles").append(`<option>${ arrVehicles[i] }</option>`);
-            }
-
-            // Fügt Optionen in der Leitstellenauswahl hinzu (Aus Array mit Leitstellennamen)
-            for (i in dispatchCenter) {
-                $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
-            }
-
-            // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
-            $("#frSelectVehicles").val(mapVehicles(frSettings.vehicleTypes[lang], "name"));
-            $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
         }
+
+        // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
+        for (i in arrVehicles) {
+            $("#frSelectVehicles").append(`<option>${ arrVehicles[i] }</option>`);
+        }
+
+        // Fügt Optionen in der Leitstellenauswahl hinzu (Aus Array mit Leitstellennamen)
+        for (i in dispatchCenter) {
+            $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
+        }
+
+        // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
+        $("#frSelectVehicles").val(mapVehicles(frSettings.vehicleTypes[lang], "name"));
+        $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
+    }
 
     // Fügt eine Checkbox im Gebäude bearbeiten Fenster ein mit der ausgewählt werden kann, dass alle Fahrzeuge des Gebäudes verwendet werden dürfen
     if (window.location.pathname.includes("buildings") && window.location.pathname.includes("edit")) {
@@ -220,7 +290,7 @@
                       <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), dispatchSetup.additionalBuildings) > -1 ? "checked" : "" }>
                       <label class="form-check-label" for="frCbxBuildingId">${ lang == "de_DE" ? "Wachen-ID im First Responder berücksichtigen" : "use this building id for First Responder" }</label>
                     </div>`);
-        }
+    }
 
     // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
     $("body").on("click", "#frSaveAaoId", function() {
@@ -288,24 +358,32 @@
                 (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
                 $("#vehicle_checkbox_" + vId).click(); // Die Checkbox wird ausgewählt
                 foundFirstResponder = true;
+                $( ".alert_next" )[0].click();
                 return false; // Beendet die Suche nach dem First Responder
             }
         });
-        
+
         // Gibt einen Error in die Konsole wenn kein passendes Fahrzeug gefunden wurde.
         if (!foundFirstResponder) { // Wenn kein geeignetes Fahrzeug gefunden wurde
             console.error("First Responder Reloaded: Kein geeignetes Fahrzeug gefunden!");
-        
+
         }
     });
 
     // Wertet den Tastendruck auf die in var key hinterlegten taste aus und "drückt" auf die FirstResponder AAO
+
+    var fIsHotKeyPressed = false
+
     $(document).keyup(function(e) {
-        if (!$("input:text").is(":focus")) { // Überprüft, ob kein Texteingabefeld den Fokus hat
-            if (e.keyCode === jsKeyCode){ // Überprüft, ob die gedrückte Taste dem definierten Schlüssel entspricht
-                $('#aao_' + frSettings.aaoId[lang] + '')[0].click(); // Klickt auf die AAO
-            }
+        if (!$("input:text").is(":focus") && e.keyCode === jsKeyCode && !fIsHotKeyPressed) { // Überprüft, ob kein Texteingabefeld den Fokus hat, die Taste dem Schlüsselentspricht und die Taste noch nicht gedrückt wurde
+            fIsHotKeyPressed = true;
+            $('#aao_' + frSettings.aaoId[lang] + '')[0].click(); // Klickt auf die AAO
         }
+        logging("HotKey wurde gedrückt");
     });
+
+    // Fahrzeit nach 1 Sekunden in AAO Button schreiben. 100ms gehen auch sind aber bei manchen Ladezeiten zu knapp.
+    setTimeout(setAaoTime,1000);
+
 
 })();
