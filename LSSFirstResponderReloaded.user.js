@@ -8,6 +8,7 @@
 // @homepageURL  https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
 // @supportURL   https://github.com/SaibotH-LSS/LSSFirstResponderReloaded/issues
 // @updateURL    https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
+// @downloadURL  https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
 // @icon         https://www.leitstellenspiel.de/favicon.ico
 // @match        *://www.leitstellenspiel.de/missions/*
 // @match        *://www.leitstellenspiel.de/aaos/*/edit
