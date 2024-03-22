@@ -10,7 +10,9 @@ Ich übernehme keinerlei Garantie, dass dieses Skript funktioniert. Die falsche 
 !!! Die Nutzung ist also auf eigene Gefahr !!!
 
 Release V1.0.0:
+
 Verbesserungen (Im vergleich zum Skript von DrTraxx):
+
   -  Entnahme der Fahrzeugdaten aus der API des LSSM V4
   -  Hinzufügen eines Prefix (HiOrg - Kürzel) zu den Fahrzeugnamen um die Sortierung zu vereinfachen
   -  Beschreiben des AAOs mit der Fahrzeit des First Responders
