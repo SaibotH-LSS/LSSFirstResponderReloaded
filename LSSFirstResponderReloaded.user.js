@@ -238,7 +238,7 @@
         if (frSettings.aaoId[lang]) {
             $("#available_aao_" + frSettings.aaoId[lang])
                 .parent()
-                .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px">
+                .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px" id="frOpenModal">
                         <div class="glyphicon glyphicon-cog" style="color:LightSteelBlue"></div>
                         </button>
                         <div class="modal fade" id="frModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
@@ -251,37 +251,13 @@
                         </button>
                         </div>
                         <div class="modal-body" id="frModalBody">
-                        <label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
-                        <select multiple class="form-control" id="frSelectVehicles" style="height:20em;width:40em"></select>
-                        <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="frCbxUseLst" ${ dispatchSetup.useIt ? "checked" : "" }>
-                        <label class="form-check-label" for="frCbxUseLst" style="margin-top:2em">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
                         </div>
-                        <label for="frSelectDispatch">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
-                        <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:40em"></select>
-                        </div>
-                        <div class="modal-footer">
-                        <button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
-                        <button type="button" class="btn btn-success" id="frSavePreferences">${ lang == "de_DE" ? "Speichern" : "save" }</button>
+                        <div class="modal-footer" id="frModalFooter">
                         </div>
                         </div>
                         </div>
                         </div>`);
         }
-
-        // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
-        for (i in arrVehicles) {
-            $("#frSelectVehicles").append(`<option>${ arrVehicles[i] }</option>`);
-        }
-
-        // Fügt Optionen in der Leitstellenauswahl hinzu (Aus Array mit Leitstellennamen)
-        for (i in dispatchCenter) {
-            $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
-        }
-
-        // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
-        $("#frSelectVehicles").val(mapVehicles(frSettings.vehicleTypes[lang], "name"));
-        $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
     }
 
     // Fügt eine Checkbox im Gebäude bearbeiten Fenster ein mit der ausgewählt werden kann, dass alle Fahrzeuge des Gebäudes verwendet werden dürfen
@@ -342,6 +318,37 @@
         }
     });
 
+    $("body").on("click","#frOpenModal", function() {
+        $("#frModalBody").html(`<label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
+                                <select multiple class="form-control" id="frSelectVehicles" style="height:20em;width:40em"></select>
+                                <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="frCbxUseLst" ${ dispatchSetup.useIt ? "checked" : "" }>
+                                <label class="check-box-label" for="frCbxUseLst" style="margin-top:2em">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
+                                </div>
+                                <br>
+                                <label for="frSelectDispatch">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
+                                <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:40em"></select>
+                                </div>`);
+
+        $("#frModalFooter").html(`<button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
+                                  <button type="button" class="btn btn-success" id="frSavePreferences">${ lang == "de_DE" ? "Speichern" : "save" }</button>`);
+
+        // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
+        for (i in arrVehicles) {
+            $("#frSelectVehicles").append(`<option>${ arrVehicles[i] }</option>`);
+        }
+
+        // Fügt Optionen in der Leitstellenauswahl hinzu (Aus Array mit Leitstellennamen)
+        for (i in dispatchCenter) {
+            $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
+        }
+
+        // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
+        $("#frSelectVehicles").val(mapVehicles(frSettings.vehicleTypes[lang], "name"));
+        $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
+    });
+
+
     // Hier findet die Magie statt. Wenn der FR AAO Button gedrückt wird, wird entsprechend der erste Eintrag gesucht der den Anforderungen entspricht.
     $("#aao_" + frSettings.aaoId[lang]).click(function() {
 
@@ -359,7 +366,9 @@
                 (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
                 $("#vehicle_checkbox_" + vId).click(); // Die Checkbox wird ausgewählt
                 foundFirstResponder = true;
-                $( ".alert_next" )[0].click();
+                setTimeout(function() {
+                    $( ".alert_next" )[0].click(); // Alarmiert und geht zum nächsten Einsatz (Verzögert um eine Sekunde)
+                },1000);
                 return false; // Beendet die Suche nach dem First Responder
             }
         });
@@ -367,14 +376,11 @@
         // Gibt einen Error in die Konsole wenn kein passendes Fahrzeug gefunden wurde.
         if (!foundFirstResponder) { // Wenn kein geeignetes Fahrzeug gefunden wurde
             console.error("First Responder Reloaded: Kein geeignetes Fahrzeug gefunden!");
-
         }
     });
 
     // Wertet den Tastendruck auf die in var key hinterlegten taste aus und "drückt" auf die FirstResponder AAO
-
     var fIsHotKeyPressed = false
-
     $(document).keyup(function(e) {
         if (!$("input:text").is(":focus") && e.keyCode === jsKeyCode && !fIsHotKeyPressed) { // Überprüft, ob kein Texteingabefeld den Fokus hat, die Taste dem Schlüsselentspricht und die Taste noch nicht gedrückt wurde
             fIsHotKeyPressed = true;
@@ -383,8 +389,7 @@
         logging("HotKey wurde gedrückt");
     });
 
-    // Fahrzeit nach 1 Sekunden in AAO Button schreiben. 100ms gehen auch sind aber bei manchen Ladezeiten zu knapp.
+    // Fahrzeit nach 1000 Millisekunden in AAO Button schreiben. 100ms gehen auch sind aber bei manchen Ladezeiten zu knapp.
     setTimeout(setAaoTime,1000);
-
 
 })();
