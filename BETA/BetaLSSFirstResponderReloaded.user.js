@@ -183,7 +183,8 @@
                     fAutoShare: false, // Automatisch alarmieren und teilen wenn FRR ausgeführt wird
                     jsKeyCode: 86, // Javascript Code für den HotKey. Wird mit v-Taste vorbelegt. 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
                     fLoggingOn: false, // Schalter für logging
-                    fUseDispatch: false // nur Fahrzeuge bestimmter Leitstellen nutzen
+                    fUseDispatch: false, // nur Fahrzeuge bestimmter Leitstellen nutzen
+                    alarmDelay: 1
                 },
                 vehicleTypes: {
                     lastUpdate: { }, // Hier kommt das Datum zum letzten Update rein.
@@ -210,6 +211,7 @@
 
     // Anlegen und beschreiben diverser Variablen
     var fLoggingOn = true;
+    var fIsHotKeyPressed = false
     var aVehicleTypes = [];
     var frSettings = JSON.parse(localStorage.firstResponder);
     var frrSettings = JSON.parse(localStorage.getItem('frrSettings'));
@@ -227,10 +229,6 @@
     // Schreiben der Fahrzeugtypen ins Log
     logging(aVehicleTypes,"aVehicleTypes");
     logging(frrSettings,"frrSettings");
-
-    // ###############################
-    // Bis hier geht der aktuelle Test
-    // ###############################
 
     if (!frSettings.vehicleTypes[lang]) frSettings.vehicleTypes[lang] = [];
     if (!dispatchSetup.additionalBuildings) dispatchSetup.additionalBuildings = []; // Wird schon bei der Initialisierung in localStorage.fr_dispatchSetup geschrieben. Sollte dies durch eine alte Version jedoch schon passiert sein, könnte der EIntrag fehlen.
@@ -361,6 +359,7 @@
         frrSettings[lang].general.fAutoAlert = $("#frrAutoAlert")[0].checked;
         frrSettings[lang].general.fAutoShare = $("#frrAutoShare")[0].checked;
         frrSettings[lang].general.fLoggingOn = $("#frrLoggingOn")[0].checked;
+        frrSettings[lang].general.alarmDelay = parseInt($("#frrAlarmDelay").val());
         frrSettings[lang].general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
         localStorage.fr_dispatchSetup = JSON.stringify(dispatchSetup);
         localStorage.firstResponder = JSON.stringify(frSettings);
@@ -391,7 +390,11 @@
                                         <label for="frrLoggingOn" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Logging ein" : "Logging enabled" }</label>
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
-                                        <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" value="${String.fromCharCode(frrSettings[lang].general.jsKeyCode) || ''}">
+                                        <input type="number" id="frrAlarmDelay" min="0" max="10" style="width: 50px;" value="${frrSettings[lang].general.alarmDelay.toString() || ''}">
+                                        <label for="frrAlarmDelay" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe Verzögerungszeit (0-10s)" : "Enter alarm delay (0-10s)" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0.3em;">
+                                        <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" style="width: 50px;" value="${String.fromCharCode(frrSettings[lang].general.jsKeyCode) || ''}">
                                         <label for="frrKeyCodeInput" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe HotKey (nur Buchstaben)" : "Enter hot key (letters only)" }</label>
                                     </div>
                                 </div>
@@ -449,12 +452,12 @@
                     logging("Sharebutton gefunden und draufgeklickt");
                     setTimeout(function() {
                         $( ".alert_next_alliance" )[0].click();
-                    },1000);
+                    },frrSettings[lang].general.alarmDelay * 1000);
                 } else if (frrSettings[lang].general.fAutoAlert) {
                     logging('Sharebutton nicht gefunden oder automatisches Teilen abgeschaltet. Autoshare: ' + frrSettings[lang].general.fAutoShare)
                     setTimeout(function() {
                         $( ".alert_next" )[0].click();
-                    },1000);
+                    },frrSettings[lang].general.alarmDelay * 1000);
                 } else {
                     logging("Sharebutton nicht gefunden oder automatisches Teilen abgeschaltet UND automatisches Alarmieren abgeschaltet. Autoshare: " + frrSettings[lang].general.fAutoShare + " AutoAlert: " + frrSettings[lang].general.fAutoAlert);
                 }
@@ -469,21 +472,28 @@
         }
     });
 
-    // Wertet den Tastendruck auf die in var key hinterlegten taste aus und "drückt" auf die FirstResponder AAO
+    // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
+    $(document).keyup(function(evt) {
 
-    var fIsHotKeyPressed = false
+        logging('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
 
-    $(document).keyup(function(e) {
-
-        logging('Gedrückter Keycode: ' + e.keyCode);
-
-        if (!$("input:text").is(":focus") && e.keyCode === frrSettings[lang].general.jsKeyCode && !fIsHotKeyPressed) { // Überprüft, ob kein Texteingabefeld den Fokus hat, die Taste dem Schlüsselentspricht und die Taste noch nicht gedrückt wurde
-            logging("HotKey wurde gedrückt");
+        if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode && !fIsHotKeyPressed) { // Überprüft, ob kein Texteingabefeld den Fokus hat, die Taste dem Schlüsselentspricht und die Taste noch nicht gedrückt wurde
+            logging("HotKey wurde gedrückt!");
             fIsHotKeyPressed = true;
             $('#aao_' + frSettings.aaoId[lang] + '')[0].click(); // Klickt auf die AAO
+        } else if (evt.target.id === "frrAlarmDelay") { // Prüft ob die Alarmverzögerung eingegeben wurde
+            logging(evt.target.value,"Inhalt des Eingabefeldes nach Änderung: ")
+            if (parseInt(evt.target.value) > 10) {
+                evt.preventDefault();
+                evt.target.value = "10"
+            } else if (parseInt(evt.target.value) < 0) {
+                evt.preventDefault();
+                evt.target.value = "0"
+            }
         }
     });
 
+    // Event keydown zur Auswertung von Eingaben überwachen
     $(document).keydown(function(evt) {
         if (evt.target.id === "frrKeyCodeInput" && // Überprüft, ob das Ereignisziel das Eingabefeld ist
             evt.keyCode !== 8 && // Überprüft, ob die Taste nicht Backspace ist
