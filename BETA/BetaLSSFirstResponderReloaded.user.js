@@ -121,7 +121,7 @@
             }
             return newObj;
         });
-
+        logging(jsObject, "Altes Objekt für Prefixing: ")
         // Prefix für Fahrzeugbezeichnung hinzufügen
         jsObject.forEach(function(vehicle) {
             updateCaptionPrefix(vehicle);
@@ -129,6 +129,49 @@
 
         return jsObject;
 
+    }
+
+    // Holt die Fahrzeugdaten aus der LSSM API ab, verarbeitet diese (Präfix und Fahrzeugnamenliste) und legt diese im local Storage ab.
+    async function fetchVehicles(lang) {
+        logging(Object.keys(frrSettings[lang].vehicleTypes.data).length, "Länge der Daten: ");
+        logging(frrSettings[lang].vehicleTypes.lastUpdate, "Zeitstempel der alten Daten: ")
+        logging(new Date().getTime(), "Aktueller Zeitstempel: ");
+
+        // Daten werden abgerufen und bearbeitet wenn noch keine vorhanden sind oder die Daten zu alt sind
+        if (Object.keys(frrSettings[lang].vehicleTypes.data).length === 0 || frrSettings[lang].vehicleTypes.lastUpdate < (new Date().getTime() - 5 * 100 * 60)) {
+            logging("Daten werden abgefragt");
+
+            // Daten werden abgerufen und über try ... catch Fehler abgefangen.
+            try {
+                frrSettings[lang].vehicleTypes.data = await $.getJSON("https://api.lss-manager.de/" + lang + "/vehicles"); // Ruft die Daten ab. Wenn ein Error kommt wird der folgende Code nicht mehr bearbeitet.
+                frrSettings[lang].vehicleTypes.lastUpdate = new Date().getTime(); // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
+
+                logging(frrSettings[lang].vehicleTypes.data, "Neue Daten für Prefixing: ");
+
+                // Prefix hinzufügen
+                Object.keys(frrSettings[lang].vehicleTypes.data).forEach(function(key) {
+                    const vehicle = frrSettings[lang].vehicleTypes.data[key];
+                    updateCaptionPrefix(vehicle);
+                });
+
+                // Speichert die Fahrzeugnamen in ein Array und Sortiert es
+                frrSettings[lang].vehicleTypes.captionList = [];
+                for (const [vehicleId, vehicleData] of Object.entries(frrSettings[lang].vehicleTypes.data)) {
+                    frrSettings[lang].vehicleTypes.captionList.push(vehicleData.caption);
+                }
+                frrSettings[lang].vehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+
+                localStorage.setItem("frrSettings", JSON.stringify(frrSettings)); // Neue Daten werden in localStorage gespeichert
+
+                logging(frrSettings[lang].vehicleTypes.data, "Daten aus API erfolgreich ausgelesen. Daten: ");
+            } catch(error) {
+                if (error.readyState === 0 && error.statusText === "error") {
+                    logging("Fehler beim Abrufen der API: Netzwerkfehler oder CORS-Problem");
+                } else {
+                    logging(error, "Sonstiger Fehler beim Abrufen der API: ");
+                }
+            }
+        } else logging("Daten sind noch aktuell")
     }
 
     // Je nach trigger werden die Namen oder die IDs der Fahrzeuge als Array ausgegeben.
@@ -188,7 +231,7 @@
                 },
                 vehicleTypes: {
                     lastUpdate: { }, // Hier kommt das Datum zum letzten Update rein.
-                    data: { }, // Hier die Daten aus der API
+                    data: {}, // Hier die Daten aus der API
                     captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
                     settings: { }// Hier die erlaubten Fahrzeuge
                 },
@@ -217,14 +260,16 @@
     var frrSettings = JSON.parse(localStorage.getItem('frrSettings'));
     var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
     var aBuildings = await $.getJSON('/api/buildings');
-    var jsKeyCode = 86; // 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
 
     // Schreiben des Scriptstarts ins Log
     logging("Wird ausgeführt!");
+    logging(JSON.parse(localStorage.frrSettings)[lang].vehicleTypes.lastUpdate, "Zeitstempel aus frrSettings nach Parsing: ");
+    logging(JSON.parse(localStorage.frrSettings)[lang].vehicleTypes.data, "Daten aus frrSettings vehicleTypes; ");
 
     //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
     aVehicleTypes = await getVehicleTypes(lang);
-    frrSettings[lang].vehicleTypes.data = await getVehicleTypes(lang);
+    await fetchVehicles(lang);
+    //frrSettings[lang].vehicleTypes.data = await getVehicleTypes(lang);
 
     // Schreiben der Fahrzeugtypen ins Log
     logging(aVehicleTypes,"aVehicleTypes");
