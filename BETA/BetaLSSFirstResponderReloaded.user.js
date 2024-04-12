@@ -43,7 +43,7 @@
             if (frrSettings[lang].vehicleTypes.settings.includes(vType) && //Fahrzeugtyp wurde ausgewählt UND
                 !$("#vehicle_checkbox_" + vId)[0].checked && // Checkbox ist NICHT angewählt UND
                 !$("#vehicle_checkbox_" + vId)[0].disabled && // Checkbox ist NICHT deaktiviert UND
-                (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
+                (frrSettings[lang].general.fUseDispatch === false || frrSettings[lang].allowedBuildingIds.includes(lstId) || frrSettings[lang].addBuildingIds.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
 
                 document.getElementById("aao_timer_" + frrSettings[lang].aaoId).innerText = formatTime(time);
                 logging("Zeit hinzugefügt");
@@ -202,7 +202,10 @@
         return returnValue;
     }
 
-    function mappingGpt(dataSet, mapArray, trigger) {
+    function mapping(dataSet, mapArray, trigger) {
+        logging.data(dataSet, "Mapping dataSet: ");
+        logging.data(mapArray, "Mapping mapArray: ");
+        logging.data(trigger, "Mapping trigger: ");
         if (trigger !== "caption" && trigger !== "id") {
             console.error("Mapping: Ungültiger Trigger!");
             return [];
@@ -235,7 +238,7 @@
         return retVal;
     }
 
-    function mapping(dataSet, mapArray, trigger) {
+    function mappingBad(dataSet, mapArray, trigger) {
         var retVal = [];
         if (Array.isArray(dataSet)) { // Gebäude sind in einem Array gespeichert.
             logging.log("Mapping hat ein Array erkannt");
@@ -339,7 +342,7 @@
                     captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
                     settings: []// Hier die erlaubten Fahrzeuge
                 },
-                allowedDispatchIds: [], // Hier können die Einstellungen für Leitstellen hinzugefügt werden
+                allowedBuildingIds: [], // Hier können die Einstellungen für Leitstellen/Zusätzlichen Gebäuden hinzugefügt werden
                 addBuildingIds: [] // Hier können die Einstellungen für Wachen hinzugefügt werden
             }
         };
@@ -382,7 +385,7 @@
                                 <label for="frSelectDispatch" style="margin-bottom: 0.2em;margin-top= 0;">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
                                 <div style="display: flex; flex-direction: column;margin-top: ;">
                                     <div style="margin-bottom: 0.3em;">
-                                        <input type="checkbox" id="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;" ${ dispatchSetup.useIt ? "checked" : "" }>
+                                        <input type="checkbox" id="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fUseDispatch ? "checked" : "" }>
                                         <label for="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
                                     </div>
                                 </div>
@@ -391,6 +394,18 @@
 
         $("#frModalFooter").html(`<button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
                                   <button type="button" class="btn btn-success" id="frSavePreferences">${ lang == "de_DE" ? "Speichern" : "save" }</button>`);
+
+        // Liste der Leitstellennamen aus allen Gebäuden des Users extrahieren
+        var aDispatchCaptions = aUserBuildings
+        .filter(entry => entry.building_type === 7)
+        .map(entry => entry.caption);
+
+        // Namen der zusätzlich ausgewählten Gebäude hinzufügen
+        aDispatchCaptions = aDispatchCaptions.concat(mapping(aUserBuildings, frrSettings[lang].addBuildingIds, "caption"));
+
+        // Sortieren
+        aDispatchCaptions.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+        logging.data(aDispatchCaptions, "Inhalt von aDisplatchCaptions: ");
 
         // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
         for (i in frrSettings[lang].vehicleTypes.captionList) {
@@ -402,9 +417,15 @@
             $("#frSelectDispatch").append(`<option>${ frrSettings[lang].dispatch.captionList[i] }</option>`);
         }
 */
+        // ########################################################################################################################################### Hier war ich gerade! dispatchCenter neu definieren!!!
+        for (i in dispatchCenter) {
+            $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
+        }
+
         // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
         $("#frSelectVehicles").val(mapVehicles(frrSettings[lang].vehicleTypes.settings, "name"));
-        $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
+        //$("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
+        $("#frSelectDispatch").val(mapping(aUserBuildings, frrSettings[lang].allowedBuildingIds, "caption"));
     }
 
     // ###############
@@ -426,20 +447,44 @@
     var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
     var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
     var aBuildings = await $.getJSON('/api/buildings');
+    var aUserBuildings = await $.getJSON('/api/buildings');
 
-    logging.data(aBuildings, "Inhalt von aBuildings: ");
+    logging.data(aUserBuildings, "Inhalt von aUserBuildings: ");
 
-    // Alte Daten in neuen Speicher laden
-    if (frrSettings[lang].vehicleTypes.settings.length === 0 && localStorage.firstResponder) {
-        frrSettings[lang].vehicleTypes.settings = JSON.parse(localStorage.getItem('firstResponder')).vehicleTypes[lang];
-        localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
-    }
-    if (frrSettings[lang].aaoId === "0" && localStorage.firstResponder) {
-        const oldData = JSON.parse(localStorage.getItem('firstResponder')).aaoId[lang];
-        if (oldData.length > 1) {
-            frrSettings[lang].aaoId = oldData;
+    // Alte Daten in neuen Speicher laden --> Version Control?
+    // firstResponder aus den alten Daten holen und anschließend löschen
+    if (localStorage.firstResponder) {
+        const oldData = JSON.parse(localStorage.getItem('firstResponder'));
+        if (frrSettings[lang].vehicleTypes.settings.length === 0 && oldData.vehicleTypes[lang]) {
+            frrSettings[lang].vehicleTypes.settings = oldData.vehicleTypes[lang];
         }
+        if (frrSettings[lang].aaoId === "0" && oldData.aaoId[lang]) {
+            frrSettings[lang].aaoId = oldData.aaoId[lang];
+            frrSettings[lang].general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
+        }
+        // alte Daten nach der Übernahme löschen.
+        // localStorage.removeItem('firstResponder');
     }
+    // fr_dispatchSetup aus den alten Daten holen und anschließend löschen
+    if (localStorage.fr_dispatchSetup) {
+        const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
+        // Dispatch IDs holen
+        if (frrSettings[lang].allowedBuildingIds.length === 0) {
+            frrSettings[lang].allowedBuildingIds = oldData.dispatchId;
+        }
+        // Additional buildings holen
+        if (frrSettings[lang].addBuildingIds.length === 0) {
+            frrSettings[lang].addBuildingIds = oldData.additionalBuildings;
+        }
+        // UseIt holen
+        if (frrSettings[lang].general.fUseDispatch !== oldData.useIt) {
+            frrSettings[lang].general.fUseDispatch = oldData.useIt;
+        }
+        // alte Daten nach der Übernahme löschen.
+        // localStorage.removeItem('fr_dispatchSetup');
+    }
+    // Geholte alte Daten schreiben.
+    localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
     var frrModalElement = `
@@ -505,7 +550,6 @@
 
         // Buttonclick öffnen des Menüs
         $("body").on("click","#frrOpenModal", async function() {
-            const aDispatchCaptionList = await $.getJSON('/api/buildings'); // GEHT SO NICHT DA NOCH SORTIERT UND AUSGEMISTET WERDEN MUSS!!!
             openFrrModal();
             var modalHeight = $(window).height() - 200; // Adjust as needed
             logging.data(modalHeight, "Maximale höhe Modal Body");
@@ -521,10 +565,10 @@
     if (window.location.pathname.includes("missions")) {
         var arrVehicles = [];
         var dispatchCenter = mapDispatchCenter(dispatchSetup.additionalBuildings, "name");
-        var i;
+
 
         // Speichert die Fahrzeugnamen in ein Array und Sortiert es
-        for (i in aVehicleTypes) {
+        for (var i in aVehicleTypes) {
             arrVehicles.push(aVehicleTypes[i].caption);
         }
         arrVehicles.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
@@ -562,7 +606,7 @@
     if (window.location.pathname.includes("buildings") && window.location.pathname.includes("edit")) {
         $(".building_leitstelle_building_id")
             .after(`<div class="form-check">
-                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), dispatchSetup.additionalBuildings) > -1 ? "checked" : "" }>
+                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), frrSettings[lang].addBuildingIds) > -1 ? "checked" : "" }>
                       <label class="form-check-label" for="frCbxBuildingId">${ lang == "de_DE" ? "Wachen-ID im First Responder berücksichtigen" : "use this building id for First Responder" }</label>
                     </div>`);
     }
@@ -587,14 +631,14 @@
     $("body").on("click", "#frCbxBuildingId", function() {
         var buildingId = +window.location.pathname.replace(/\D+/g, "")
         if ($("#frCbxBuildingId")[0].checked) {
-            dispatchSetup.additionalBuildings.push(buildingId);
+            frrSettings[lang].addBuildingIds.push(buildingId);
         } else {
-            dispatchSetup.additionalBuildings.splice($.inArray(buildingId, dispatchSetup.additionalBuildings), 1);
-            if (dispatchSetup.dispatchId.includes(buildingId)) {
-                dispatchSetup.dispatchId.splice($.inArray(buildingId, dispatchSetup.dispatchId), 1);
+            frrSettings[lang].addBuildingIds.splice(frrSettings[lang].addBuildingIds.indexOf(buildingId), 1);
+            if (frrSettings[lang].allowedBuildingIds.includes(buildingId)) {
+                frrSettings[lang].allowedBuildingIds.splice(frrSettings[lang].allowedBuildingIds.indexof(buildingId), 1);
             }
         }
-        localStorage.fr_dispatchSetup = JSON.stringify(dispatchSetup);
+        localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
     });
 
     // Wählt die gespeicherten Einträge der Leitstellen an wenn die entsprechende Checkbox angewählt ist. Notwendig? Auswahl kann eigentlich immer angezeigt werden?
@@ -610,12 +654,13 @@
     $("body").on("click", "#frSavePreferences", function() {
         frrSettings[lang].vehicleTypes.settings = mapVehicles($("#frSelectVehicles").val(), "type");
         dispatchSetup.dispatchId = $("#frSelectDispatch").val() ? mapDispatchCenter($("#frSelectDispatch").val(), "id") : []; // ALT
-        dispatchSetup.useIt = $("#frCbxUseLst")[0].checked; // ALT
+        frrSettings[lang].general.fUseDispatch = $("#frCbxUseLst")[0].checked;
         frrSettings[lang].general.fAutoAlert = $("#frrAutoAlert")[0].checked;
         frrSettings[lang].general.fAutoShare = $("#frrAutoShare")[0].checked;
         frrSettings[lang].general.fLoggingOn = $("#frrLoggingOn")[0].checked;
         frrSettings[lang].general.alarmDelay = parseInt($("#frrAlarmDelay").val());
         frrSettings[lang].general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
+        frrSettings[lang].allowedBuildingIds = $("#frSelectDispatch").val() ? mapping(aUserBuildings, $("#frSelectDispatch").val(), "id") : [];
         localStorage.fr_dispatchSetup = JSON.stringify(dispatchSetup); // ALT
         localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
         $("#frSavePreferences").addClass("hidden");
@@ -648,7 +693,7 @@
             if (frrSettings[lang].vehicleTypes.settings.includes(vType) && //Fahrzeugtyp wurde ausgewählt UND
                 !$("#vehicle_checkbox_" + vId)[0].checked && // Checkbox ist NICHT angewählt UND
                 !$("#vehicle_checkbox_" + vId)[0].disabled && // Checkbox ist NICHT deaktiviert UND
-                (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
+                (frrSettings[lang].general.fUseDispatch === false || frrSettings[lang].allowedBuildingIds.includes(lstId) || frrSettings[lang].addBuildingIds.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
                 $("#vehicle_checkbox_" + vId).click(); // Die Checkbox wird ausgewählt
                 foundFirstResponder = true;
                 let shareButton = $( ".alert_next_alliance" )[0];
