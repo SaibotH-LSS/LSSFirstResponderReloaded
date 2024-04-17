@@ -68,6 +68,10 @@
                 localStorage.removeItem('fr_dispatchSetup');
                 logging.log("fr_dispatchSetup wurde aus localStorage gelöscht!");
             }
+            if (localStorage.aVehicleTypesNew) {
+                localStorage.removeItem('aVehicleTypesNew');
+                logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
+            }
             frrSettings.scriptVersion = "2.0.0"
             dataChanged = true;
             logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
@@ -362,7 +366,7 @@
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
                                         <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" style="width: 50px;" value="${String.fromCharCode(frrSettings[lang].general.jsKeyCode) || ''}">
-                                        <label for="frrKeyCodeInput" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe HotKey (nur Buchstaben)" : "Enter hot key (letters only)" }</label>
+                                        <label for="frrKeyCodeInput" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe HotKey (nur Buchstaben, kein A,D,E,N,S,W oder X)" : "Enter hot key (letters only, no A,D,E,N,S,W or X)" }</label>
                                     </div>
                                 </div>
                                 <label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
@@ -420,7 +424,7 @@
     if (!localStorage.frrSettings) localStorage.setItem('frrSettings', JSON.stringify(createSettingsObject()));
 
     // Anlegen und beschreiben diverser Variablen
-    var fLoggingOn = false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
+    var fLoggingOn = true; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
     var fFrrDone = false; // Flag ob First Responder schon ausgeführt wurde
     var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
     var pointless = "Warning: pointless!";
@@ -430,6 +434,10 @@
 
     // Versionierung prüfen
     if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
+    if (localStorage.aVehicleTypesNew) {
+        localStorage.removeItem('aVehicleTypesNew');
+        logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
+    }
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
     var frrModalElement = `
@@ -524,8 +532,45 @@
         });
     }
 
-    // Eventlistener für Menübuttons
+    // ##########################################################
+    // Hinzufügen des Alarmbuttons wenn keine AAO verwendet wird.
+    // ##########################################################
+
+    // Alarmbutton wenn keine AAO genutzt wird
+    if (window.location.pathname.includes("missions") &&
+        (frrSettings[lang].general.fWoAao || frrSettings[lang].aaoId === "00000000")) {
+        $('.flex-row.flex-nowrap:not(.navbar-right, .hidden-xs)')
+            .last()
+            .after(`<div class="flex-row flex-nowrap">
+                        <a href="#" aria-role="button" class="btn btn-primary btn-sm" id="frrAlertButton" style="height: 30px;">
+                            <img class="icon icons8-Phone-Filled" src="/images/icons8-phone_filled.svg" width="18" height="18" aria-hidden="true">
+                            <span aria-hidden="true">First Responder</span>
+                            <span class="badge" aria-hidden="true" id="frrTime">${ lang == "de_DE" ? "warte" : "wait" }</span>
+                        </a>
+                        <a href="#" aria-role="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#frModal" id="frrOpenModal" style="height: 30px;">
+                            <span class="glyphicon glyphicon-cog" style="font-size: 17px;"></span>
+                        </a>
+                    </div>
+                    ${frrModalElement}`);
+
+        fMenuButtonAdded = true;
+
+        setTimeout(function() {
+            document.getElementById("frrTime").innerText = getAaoTime();
+        }, 200);
+
+        $("body").on("click", "#frrAlertButton", function() {
+            logging.log("First Responder Alarmbutton wurde geklickt!");
+            frrAlert();
+        });
+    }
+
+    // ##############################
+    // Eventlistener für Menü Buttons
+    // ##############################
+
     if (fMenuButtonAdded) {
+        logging.log("Auswertung menübuttons wurde hinzugefügt");
         // Auswertung, dass der Button zum Speichern der Einstellungen gedrückt wurde. Speichert die IDs in frrSettings.
         $("body").on("click", "#frSavePreferences", function() {
             // Auswerten ob ein Reload durchgeführt und ob die AAO ID auf 0 gesetzt werden muss.
@@ -571,37 +616,6 @@
             var modalHeight = $(window).height() - 200;
             logging.data(modalHeight, "Maximale höhe Modal Body");
             $('#frModalBody').css('max-height', modalHeight + 'px');
-        });
-    }
-
-    // ##########################################################
-    // Hinzufügen des Alarmbuttons wenn keine AAO verwendet wird.
-    // ##########################################################
-
-    // Alarmbutton wenn keine AAO genutzt wird
-    if (window.location.pathname.includes("missions") &&
-        (frrSettings[lang].general.fWoAao || frrSettings[lang].aaoId === "00000000")) {
-        $('.flex-row.flex-nowrap:not(.navbar-right, .hidden-xs)')
-            .last()
-            .after(`<div class="flex-row flex-nowrap">
-                        <a href="#" aria-role="button" class="btn btn-primary btn-sm" id="frrAlertButton" style="height: 30px;">
-                            <img class="icon icons8-Phone-Filled" src="/images/icons8-phone_filled.svg" width="18" height="18" aria-hidden="true">
-                            <span aria-hidden="true">First Responder</span>
-                            <span class="badge" aria-hidden="true" id="frrTime">${ lang == "de_DE" ? "warte" : "wait" }</span>
-                        </a>
-                        <a href="#" aria-role="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#frModal" id="frrOpenModal" style="height: 30px;">
-                            <span class="glyphicon glyphicon-cog" style="font-size: 17px;"></span>
-                        </a>
-                    </div>
-                    ${frrModalElement}`);
-
-        setTimeout(function() {
-            document.getElementById("frrTime").innerText = getAaoTime();
-        }, 200);
-
-        $("body").on("click", "#frrAlertButton", function() {
-            logging.log("First Responder Alarmbutton wurde geklickt!");
-            frrAlert();
         });
     }
 
@@ -656,13 +670,15 @@
     });
 
     // Event keydown zur Auswertung von Eingaben überwachen
+    // Hotkeys die nicht verwendet werden dürfen da sie vom Spiel genutzt werden: A = 65; D = 68; E = 69; N = 78; S = 83; W = 87; X = 88
     $(document).keydown(function(evt) {
         if (evt.target.id === "frrKeyCodeInput" && // Überprüft, ob das Ereignisziel das Eingabefeld ist
             evt.keyCode !== 8 && // Überprüft, ob die Taste nicht Backspace ist
-            !(evt.keyCode >= 65 && evt.keyCode <= 90)) { // Überprüft, ob die Taste kein Buchstabe (A-Z) ist
+            (!(evt.keyCode >= 65 && evt.keyCode <= 90) || // Überprüft, ob die Taste kein Buchstabe (A-Z) ist
+            (evt.keyCode === 65 || evt.keyCode === 68 || evt.keyCode === 69 || evt.keyCode === 78 ||
+             evt.keyCode === 83 || evt.keyCode === 87 || evt.keyCode === 88))) {
             evt.preventDefault(); // Verhindert das Standardverhalten der Taste wenn die Taste nicht erlaubt ist
             logging.warn('Taste ist als HotKey nicht erlaubt! CharCode: ' + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
         }
     });
-
 })();
