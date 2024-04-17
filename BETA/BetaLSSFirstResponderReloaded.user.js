@@ -424,7 +424,7 @@
     if (!localStorage.frrSettings) localStorage.setItem('frrSettings', JSON.stringify(createSettingsObject()));
 
     // Anlegen und beschreiben diverser Variablen
-    var fLoggingOn = true; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
+    var fLoggingOn = false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
     var fFrrDone = false; // Flag ob First Responder schon ausgeführt wurde
     var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
     var pointless = "Warning: pointless!";
@@ -434,10 +434,6 @@
 
     // Versionierung prüfen
     if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
-    if (localStorage.aVehicleTypesNew) {
-        localStorage.removeItem('aVehicleTypesNew');
-        logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
-    }
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
     var frrModalElement = `
