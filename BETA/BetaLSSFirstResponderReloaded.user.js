@@ -27,11 +27,6 @@
     function versioning(version) {
         logging.data(version, "Versionsnummer an versioning() übergeben: ");
         var dataChanged = false;
-        /*        if (version.includes("BETA")) {
-            logging.log("Versioning wird nicht durchgeführt da BETA Version");
-            return false;
-        }*/
-
         // Versionssprung von TBD auf 2.0.0
         if (frrSettings.scriptVersion === "TBD") {
             // Alte Daten in neuen Speicher laden
@@ -48,8 +43,8 @@
                     logging.log("Alte AAO wurde übernommen!");
                 }
                 // alte Daten nach der Übernahme löschen.
-                // localStorage.removeItem('firstResponder');
-                // logging.log("firstResponder wurde aus localStorage gelöscht!")
+                localStorage.removeItem('firstResponder');
+                logging.log("firstResponder wurde aus localStorage gelöscht!")
             }
             // fr_dispatchSetup aus den alten Daten holen und anschließend löschen
             if (localStorage.fr_dispatchSetup) {
@@ -66,21 +61,16 @@
                 }
                 // UseIt holen
                 if (frrSettings[lang].general.fUseDispatch !== oldData.useIt) {
-                    //frrSettings[lang].general.fUseDispatch = oldData.useIt;  ######################################################### muss wieder eingeschaltet werden!!!!
-                    //logging.log("Alte UseIt einstellung wurde übernommen!");
+                    frrSettings[lang].general.fUseDispatch = oldData.useIt;
+                    logging.log("Alte UseIt einstellung wurde übernommen!");
                 }
                 // alte Daten nach der Übernahme löschen.
-                // localStorage.removeItem('fr_dispatchSetup');
-                // logging.log("fr_dispatchSetup wurde aus localStorage gelöscht!");
+                localStorage.removeItem('fr_dispatchSetup');
+                logging.log("fr_dispatchSetup wurde aus localStorage gelöscht!");
             }
             frrSettings.scriptVersion = "2.0.0"
             dataChanged = true;
             logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
-        }
-
-        if (version.includes("BETA")) {
-            frrSettings.scriptVersion = "TBD"; //############################################################# muss wieder entfernt werden!!!!
-            dataChanged = true;
         }
 
         // !!!Letzter Schritt im Versioning!!!
@@ -430,18 +420,16 @@
     if (!localStorage.frrSettings) localStorage.setItem('frrSettings', JSON.stringify(createSettingsObject()));
 
     // Anlegen und beschreiben diverser Variablen
-    var fLoggingOn = true; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
-    var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
-    var aUserBuildings = await $.getJSON('/api/buildings'); // Die Gebäude des Benutzers abholen (Evtl. bei Buttonklick auf Menü holen?)
+    var fLoggingOn = false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
     var fFrrDone = false; // Flag ob First Responder schon ausgeführt wurde
-    var frrAaoTime = "wait";
+    var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
+    var pointless = "Warning: pointless!";
     var fMenuButtonAdded = false;
+    var aUserBuildings = await $.getJSON('/api/buildings'); // Die Gebäude des Benutzers abholen (Evtl. bei Buttonklick auf Menü holen?)
     var scriptVersion = GM_info.script.version;
-    logging.data(aUserBuildings, "Inhalt von aUserBuildings: ");
 
     // Versionierung prüfen
     if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
-
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
     var frrModalElement = `
@@ -510,14 +498,12 @@
                                                 </li>
                                                 ${frrModalElement}
                                                 `);
+        fMenuButtonAdded = true;
     };
 
-    fMenuButtonAdded = true;
-
-    // Button an der AAO wenn AAO verwendet wird
+    // Button an der AAO wenn AAO verwendet wird und sie nicht 00000000 ist
     if (window.location.pathname.includes("missions") &&
         !frrSettings[lang].general.fWoAao && frrSettings[lang].aaoId !== "00000000") {
-        // Erzeugt einen Button wenn eine aaoID festgelegt wurde (Checkbox in AAO Bearbeitung). Dieses wird hinter die entsprechende AAO gesetzt. Bei Klick wird ein Einstellungsfenster geöffnet.
         $("#available_aao_" + frrSettings[lang].aaoId)
             .parent()
             .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px" id="frrOpenModal">
@@ -653,9 +639,7 @@
 
     // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
     $(document).keyup(function(evt) {
-
         logging.log('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
-
         if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
             logging.log("HotKey wurde gedrückt!");
             frrAlert();
