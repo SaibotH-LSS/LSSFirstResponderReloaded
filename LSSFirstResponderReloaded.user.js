@@ -1,21 +1,20 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      1.0.0
+// @version      2.0.0
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
+// @license      MIT
 // @homepage     https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
 // @homepageURL  https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
 // @supportURL   https://github.com/SaibotH-LSS/LSSFirstResponderReloaded/issues
 // @updateURL    https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
 // @downloadURL  https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
 // @icon         https://www.leitstellenspiel.de/favicon.ico
-// @match        *://www.leitstellenspiel.de/missions/*
-// @match        *://www.leitstellenspiel.de/aaos/*/edit
-// @match        *://www.leitstellenspiel.de/buildings/*/edit
-// @match        *://polizei.leitstellenspiel.de/missions/*
-// @match        *://polizei.leitstellenspiel.de/aaos/*/edit
-// @match        *://polizei.leitstellenspiel.de/buildings/*/edit
+// @match        *.leitstellenspiel.de
+// @match        *.leitstellenspiel.de/missions/*
+// @match        *.leitstellenspiel.de/aaos/*/edit
+// @match        *.leitstellenspiel.de/buildings/*/edit
 // @run-at       document-idle
 // @grant        GM_info
 // ==/UserScript==
@@ -30,44 +29,173 @@
     // Funktionsdeklarationen
     // ######################
 
-    // Fügt die Zeit zum AAO Button hinzu
-    function setAaoTime() {
-        $(".vehicle_checkbox").each(function() {
-            var vType = +$(this).attr("vehicle_type_id"); // Fahrzeug Typ ID
-            var vId = $(this).attr("value"); //Fahrzeug ID
-            var lstId = +$(this).attr("building_id").split("_")[1]; //Leitstellen ID
-            var buId = +$(this).attr("building_id").split("_")[0]; // Gebäude ID
-            var timeAttr = $("#vehicle_sort_" + vId).attr("timevalue");
+    function versioning(version) {
+        logging.data(version, "Versionsnummer an versioning() übergeben: ");
+        var dataChanged = false;
+        // Versionssprung von TBD auf 2.0.0
+        if (frrSettings.scriptVersion === "TBD") {
+            // Alte Daten in neuen Speicher laden
+            // firstResponder aus den alten Daten holen und anschließend löschen
+            if (localStorage.firstResponder) {
+                const oldData = JSON.parse(localStorage.getItem('firstResponder'));
+                if (frrSettings[lang].vehicleTypes.settings.length === 0 && oldData.vehicleTypes[lang]) {
+                    frrSettings[lang].vehicleTypes.settings = oldData.vehicleTypes[lang];
+                    logging.log("Alte Fahrzeugeinstellungen wurden übernommen!");
+                }
+                if (frrSettings[lang].aaoId === "00000000" && oldData.aaoId[lang]) {
+                    frrSettings[lang].aaoId = oldData.aaoId[lang];
+                    frrSettings[lang].general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
+                    logging.log("Alte AAO wurde übernommen!");
+                }
+                // alte Daten nach der Übernahme löschen.
+                localStorage.removeItem('firstResponder');
+                logging.log("firstResponder wurde aus localStorage gelöscht!")
+            }
+            // fr_dispatchSetup aus den alten Daten holen und anschließend löschen
+            if (localStorage.fr_dispatchSetup) {
+                const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
+                // Dispatch IDs holen
+                if (frrSettings[lang].allowedBuildingIds.length === 0) {
+                    frrSettings[lang].allowedBuildingIds = oldData.dispatchId;
+                    logging.log("Alte erlaubte Gebäude (Leitstellen) wurden übernommen!");
+                }
+                // Additional buildings holen
+                if (frrSettings[lang].addBuildingIds.length === 0) {
+                    frrSettings[lang].addBuildingIds = oldData.additionalBuildings;
+                    logging.log("Alte zusätzliche Wachen wurden übernommen!");
+                }
+                // UseIt holen
+                if (frrSettings[lang].general.fUseDispatch !== oldData.useIt) {
+                    frrSettings[lang].general.fUseDispatch = oldData.useIt;
+                    logging.log("Alte UseIt einstellung wurde übernommen!");
+                }
+                // alte Daten nach der Übernahme löschen.
+                localStorage.removeItem('fr_dispatchSetup');
+                logging.log("fr_dispatchSetup wurde aus localStorage gelöscht!");
+            }
+            if (localStorage.aVehicleTypesNew) {
+                localStorage.removeItem('aVehicleTypesNew');
+                logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
+            }
+            frrSettings.scriptVersion = "2.0.0"
+            dataChanged = true;
+            logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
+        }
 
-            if (timeAttr == undefined) {
-                logging("Zeitattribut ist nicht vorhanden!");
+        // !!!Letzter Schritt im Versioning!!!
+        if (dataChanged) {
+            localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
+            logging.log("Versioning hat Daten in localStorage aktualisiert");
+        }
+    }
+
+    function getFirstResponder() {
+        var retVal = {};
+        var fFirstResponderFound = false;
+
+        // alle Checkboxen durchgehen ob es ein Fahrzeug gibt welches als First Responde erlaubt ist.
+        $(".vehicle_checkbox").each(function() {
+            retVal.vType = +$(this).attr("vehicle_type_id"); // Fahrzeug Typ ID
+            retVal.vId = $(this).attr("value"); //Fahrzeug ID
+            retVal.lstId = +$(this).attr("building_id").split("_")[1]; //Leitstellen ID
+            retVal.buId = +$(this).attr("building_id").split("_")[0]; // Gebäude ID
+            retVal.timeAttr = $("#vehicle_sort_" + retVal.vId).attr("timevalue");
+            if (frrSettings[lang].vehicleTypes.settings.includes(retVal.vType) && //Fahrzeugtyp wurde in den Einstellungen ausgewählt UND
+                !this.checked && // Checkbox ist NICHT angewählt UND
+                !this.disabled && // Checkbox ist NICHT deaktiviert UND
+                (frrSettings[lang].general.fUseDispatch === false || frrSettings[lang].allowedBuildingIds.includes(retVal.lstId) || frrSettings[lang].addBuildingIds.includes(retVal.buId))) { // Gebäudesettings werden erfüllt.
+                fFirstResponderFound = true;
+                logging.data(retVal, "First Responder wurde gefunden. Daten aus getFirstResponder: ");
                 return false;
             }
+        })
 
-            var time = parseInt(timeAttr);
+        // Fahrzeug zurückgeben wenn eines gefunden wurde.
+        if (fFirstResponderFound === true) {
+            return retVal;
+        } else {
+            logging.log("getFirstResponder hat kein passendes Fahrzeug gefunden");
+            return undefined;
+        }
+    }
 
-            if (frSettings.vehicleTypes[lang].includes(vType) && //Fahrzeugtyp wurde ausgewählt UND
-                !$("#vehicle_checkbox_" + vId)[0].checked && // Checkbox ist NICHT angewählt UND
-                !$("#vehicle_checkbox_" + vId)[0].disabled && // Checkbox ist NICHT deaktiviert UND
-                (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
-
-                document.getElementById("aao_timer_" + frSettings.aaoId[lang]).innerText = formatTime(time);
-                logging("Zeit hinzugefügt");
-                return false; // Beendet die Suche nach dem First Responder
+    // Funktion für die Auswahl des First Responders, der Alarmierung und des Teilens des Einsatzes
+    function frrAlert() {
+        if (!fFrrDone) {
+            const firstResponder = getFirstResponder()
+            if (firstResponder) {
+                let shareButton = $( ".alert_next_alliance" )[0];
+                $("#vehicle_checkbox_" + firstResponder.vId).click();
+                logging.log("First Responder wurde ausgewählt");
+                fFrrDone = true;
+                if (shareButton && frrSettings[lang].general.fAutoShare) {
+                    logging.log("Sharebutton gefunden und draufgeklickt");
+                    setTimeout(function() {
+                        $( ".alert_next_alliance" )[0].click();
+                    },frrSettings[lang].general.alarmDelay * 1000);
+                } else if (frrSettings[lang].general.fAutoAlert) {
+                    logging.log('Sharebutton nicht gefunden oder automatisches Teilen abgeschaltet. Alarmieren und nächster Einsatz geklickt. Autoshare: ' + frrSettings[lang].general.fAutoShare)
+                    setTimeout(function() {
+                        $( ".alert_next" )[0].click();
+                    },frrSettings[lang].general.alarmDelay * 1000);
+                } else {
+                    logging.log("Sharebutton nicht gefunden oder automatisches Teilen abgeschaltet UND automatisches Alarmieren abgeschaltet. Autoshare: " + frrSettings[lang].general.fAutoShare + " AutoAlert: " + frrSettings[lang].general.fAutoAlert);
+                }
+            } else {
+                logging.error("frrAlert(): Es konnte kein First Responder alarmiert werden!")
             }
-        });
+        } else {
+            logging.log("frrAlert() wurde bereits ausgeführt!");
+        }
+    }
+
+    // Fügt die Zeit zum AAO Button hinzu
+    function getAaoTime() {
+        const firstResponder = getFirstResponder();
+        // Prüfen ob es einen First Responder gibt und das Zeitattribut vorhanden ist
+        if (!firstResponder) {
+            logging.log("Kein First Responder gefunden!");
+            return "no FR";
+        }
+        if (firstResponder.timeAttr === undefined) {
+            logging.log("Zeitattribut ist nicht vorhanden!");
+            return "N/A";
+        }
+
+        //Zeit Formattieren und in das Textfeld schreiben
+        var seconds = parseInt(firstResponder.timeAttr);
+        var minutes = Math.floor(seconds / 60);
+        var remainingSeconds = seconds % 60;
+        var formattedMinutes = (minutes < 10) ? "0" + minutes : minutes;
+        var formattedSeconds = (remainingSeconds < 10) ? "0" + remainingSeconds : remainingSeconds;
+        var frrTime = formattedMinutes + ":" + formattedSeconds;
+        logging.data(frrTime, "Zeit erstellt und zurückgegeben: ");
+        return frrTime
     }
 
     // Loggingfunktion die nur ausgeführt wird wenn bLoggingOn true ist
-    function logging(message,type) {
-        if (fLoggingOn) {
-            if(type === undefined){
-                console.log("FirstResponderReloaded Logging:",message);
-            }
-            else {
-                console.log("FirstResponderReloaded Objektlogging: ",type,message);
-            }
+    function logging() {
+        // Info Funktion
+        logging.info = function(message) {
+            if (fLoggingOn || frrSettings[lang].general.fLoggingOn) console.info("FirstResponderReloaded Info: ",message);
         }
+        // Normales Logging
+        logging.log = function(message) {
+            if (fLoggingOn || frrSettings[lang].general.fLoggingOn) console.log("FirstResponderReloaded Logging: ",message);
+        }
+        // Logging von Daten
+        logging.data = function(data, message) {
+            if (fLoggingOn || frrSettings[lang].general.fLoggingOn) console.log("FirstResponderReloaded Objektlogging: ", message, data);
+        }
+        // Warnung
+        logging.warn = function(message) {
+            if (fLoggingOn || frrSettings[lang].general.fLoggingOn) console.warn("FirstResponderReloaded Warnung: ",message);
+        }
+        // Error (WIRD IMMER GESCHRIEBEN)
+        logging.error = function(message) {
+            console.error("FirstResponderReloaded Error: ", message);
+        }
+
     }
 
     // Funktion zum Hinzufügen von Prefixen zum Fahrzeugnamen. Priorität dient dazu gewisse Fahrzeuge z.B. dem Rettungsdienst zuzuweisen anstatt der Feuerwehr da das entsprechende Fahrzeug in beiden Wachen stationiert sein kann.
@@ -100,296 +228,458 @@
 
         // Wenn kein Prefix gefunden wurde wird ZZZ als Prefix genutzt.
         if (!prefixFound) {
-            logging(`Kein Prefix für Fahrzeug gefunden! Fahrzeugname: ${caption}`);
+            logging.warn(`Kein Prefix für Fahrzeug gefunden! Fahrzeugname: ${caption}`);
             vehicle.caption = "ZZZ - " + caption;
         }
 
     };
 
-    // Funktion um die Fahrzeugdaten aus lss-manager zu laden und diese so zu bearbeiten, dass der Code von DrTraxx weiterhin funktioniert
-    async function getVehicleTypes(lang) {
-        // Wenn der Speicher leer ist oder das Datum der letzten aktualisierung älter als 5 Minuten ist, werden die Fahrzeugtypen abgerufen.
-        if (!localStorage.aVehicleTypesNew || JSON.parse(localStorage.aVehicleTypesNew).lastUpdate < (new Date().getTime() - 5 * 1000 * 60)) {
-            // Fahrzeugtypen werden in aVehivleTypesNew geschrieben.
-            await $.getJSON("https://api.lss-manager.de/" + lang + "/vehicles").done(data => localStorage.setItem('aVehicleTypesNew', JSON.stringify({ lastUpdate: new Date().getTime(), value: data })));
-        }
-        // Gibt die Fahrzeugtypen aus. Wandelt das JSON Objekt in ein JS Objekt mit id = parseInt(key) um den Code von DrTraxx verwenden zu können
-        let jsonObject = JSON.parse(localStorage.aVehicleTypesNew).value;
-        let jsObject = Object.keys(jsonObject).map(key => {
-            let newObj = { id: parseInt(key) };
-            let objData = jsonObject[key];
+    // Holt die Fahrzeugdaten aus der LSSM API ab, verarbeitet diese (Präfix und Fahrzeugnamenliste) und legt diese im local Storage ab.
+    async function fetchVehicles(lang) {
+        logging.data(Object.keys(frrSettings[lang].vehicleTypes.data).length, "Länge der Daten: ");
+        logging.data(frrSettings[lang].vehicleTypes.lastUpdate, "Zeitstempel der alten Daten: ")
+        logging.data(new Date().getTime(), "Aktueller Zeitstempel: ");
 
-            // Iteriere über die Schlüssel-Wert-Paare im Objekt und füge sie dem neuen Objekt hinzu
-            for (let prop in objData) {
-                newObj[prop] = objData[prop];
-            }
-            return newObj;
-        });
+        // Daten werden abgerufen und bearbeitet wenn noch keine vorhanden sind oder die Daten zu alt sind
+        if (Object.keys(frrSettings[lang].vehicleTypes.data).length === 0 || frrSettings[lang].vehicleTypes.lastUpdate < (new Date().getTime() - 5 * 1000 * 60)) {
+            logging.log("Daten werden abgefragt");
 
-        // Prefix für Fahrzeugbezeichnung hinzufügen
-        jsObject.forEach(function(vehicle) {
-            updateCaptionPrefix(vehicle);
-        });
+            // Daten werden abgerufen und über try ... catch Fehler abgefangen.
+            try {
+                frrSettings[lang].vehicleTypes.data = await $.getJSON("https://api.lss-manager.de/" + lang + "/vehicles"); // Ruft die Daten ab. Wenn ein Error kommt wird der folgende Code nicht mehr bearbeitet.
+                frrSettings[lang].vehicleTypes.lastUpdate = new Date().getTime(); // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
 
-        return jsObject;
+                logging.data(frrSettings[lang].vehicleTypes.data, "Neue Daten für Prefixing: ");
 
-    }
+                // Prefix hinzufügen
+                Object.keys(frrSettings[lang].vehicleTypes.data).forEach(function(key) {
+                    const vehicle = frrSettings[lang].vehicleTypes.data[key];
+                    updateCaptionPrefix(vehicle);
+                });
 
-    // Je nach trigger werden die Namen oder die IDs der Fahrzeuge als Array ausgegeben.
-    function mapVehicles(arrClasses, trigger) {
-        var returnValue = [];
-        if (trigger == "type") {
-            returnValue = $.map(arrClasses, function(item) {
-                return aVehicleTypes.filter((obj) => obj.caption == item)[0].id;
-            });
-        } else if (trigger == "name") {
-            returnValue = $.map(arrClasses, function(item) {
-                return aVehicleTypes.filter((obj) => obj.id == item)[0].caption;
-            });
-        }
-        return returnValue;
-    }
+                logging.log("Päfix hinzugefügt!");
 
-    // Hier wird je nach trigger die ID ider der Name der Leitstellen als Array ausgegeben.
-    function mapDispatchCenter(arrDispatchCenter, trigger) {
-        var returnValue = [];
-        if (trigger == "name") {
-            returnValue = $.map(arrDispatchCenter, function(item) {
-                return aBuildings.filter((obj) => obj.id == item)[0].caption;
-            });
-        } else if (trigger == "id") {
-            returnValue = $.map(arrDispatchCenter, function(item) {
-                return aBuildings.filter((obj) => obj.caption == item)[0].id;
-            });
-        }
-        return returnValue;
-    }
+                // Speichert die Fahrzeugnamen in ein Array und Sortiert es
+                frrSettings[lang].vehicleTypes.captionList = [];
+                for (const [vehicleId, vehicleData] of Object.entries(frrSettings[lang].vehicleTypes.data)) {
+                    frrSettings[lang].vehicleTypes.captionList.push(vehicleData.caption);
+                }
+                frrSettings[lang].vehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
 
-    function formatTime(seconds) {
-        var minutes = Math.floor(seconds / 60);
-        var remainingSeconds = seconds % 60;
+                localStorage.setItem("frrSettings", JSON.stringify(frrSettings)); // Neue Daten werden in localStorage gespeichert
 
-        // Add leading zeros if the number of minutes or seconds is single digit
-        var formattedMinutes = (minutes < 10) ? "0" + minutes : minutes;
-        var formattedSeconds = (remainingSeconds < 10) ? "0" + remainingSeconds : remainingSeconds;
-
-        return formattedMinutes + ":" + formattedSeconds;
-    };
-
-    // Vorbereitung der Einstellungsvariablen im lokalen Speicher, wenn diese nicht vorhanden sind
-    if (!localStorage.firstResponder) localStorage.firstResponder = JSON.stringify({ "vehicleTypes": {}, "aaoId": {} });
-    if (!localStorage.fr_dispatchSetup) localStorage.fr_dispatchSetup = JSON.stringify({ "dispatchId": [], "useIt": false, "additionalBuildings": [] });
-
-    // Anlegen und beschreiben diverser Variablen
-    var fLoggingOn = false;
-    var aVehicleTypes = [];
-    var frSettings = JSON.parse(localStorage.firstResponder);
-    var dispatchSetup = JSON.parse(localStorage.fr_dispatchSetup);
-    var lang = I18n.locale;
-    var aBuildings = await $.getJSON('/api/buildings');
-    var jsKeyCode = 86; // 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
-
-    // Schreiben des Scriptstarts ins Log
-    logging("Wird ausgeführt!");
-
-    //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
-    aVehicleTypes = await getVehicleTypes(lang);
-
-    // Schreiben der Fahrzeugtypen ins Log
-    logging(aVehicleTypes,"aVehicleTypes");
-
-    if (!frSettings.vehicleTypes[lang]) frSettings.vehicleTypes[lang] = [];
-    if (!dispatchSetup.additionalBuildings) dispatchSetup.additionalBuildings = []; // Wird schon bei der Initialisierung in localStorage.fr_dispatchSetup geschrieben. Sollte dies durch eine alte Version jedoch schon passiert sein, könnte der EIntrag fehlen.
-
-    // Fügt in der AAO Bearbeitung vor der ersten Checkbox eine eigene Check Box ein. Ist die entsprechende AAO in den Settings gespeichert wird das Häckchen gesetzt.
-    if (window.location.pathname.includes("aaos") && window.location.pathname.includes("edit")) {
-        $(".boolean.optional.checkbox")
-            .before(`<label class="form-check-label" for="frSaveAaoId">
-                    <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frSettings.aaoId[lang]) ? "checked" : "" }>
-                    ${ lang == "de_DE" ? "Diese ID für den First Responder nutzen." : "Use this id for FirstResponder." }
-                    </label>`);
-    }
-
-    //  Wird ausgeführt wenn es ein Einsatzfenster ist
-    if (window.location.pathname.includes("missions")) {
-        var arrVehicles = [];
-        var dispatchCenter = mapDispatchCenter(dispatchSetup.additionalBuildings, "name");
-        var i;
-
-        // Speichert die Fahrzeugnamen in ein Array und Sortiert es
-        for (i in aVehicleTypes) {
-            arrVehicles.push(aVehicleTypes[i].caption);
-        }
-        arrVehicles.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
-
-        //Erzeugt ein Array mit den Leitstellennamen und sortiert es anschließend Alphabetisch
-        for (let e of aBuildings) {
-            if (e.leitstelle_building_id) {
-                var aLeitstelle = aBuildings.find(obj => obj.id == e.leitstelle_building_id);
-
-                if (aLeitstelle && aLeitstelle.caption !== undefined && !dispatchCenter.includes(aLeitstelle.caption)) {
-                    dispatchCenter.push(aLeitstelle.caption);
-                    dispatchCenter.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+                logging.data(frrSettings[lang].vehicleTypes.data, "Daten aus API erfolgreich ausgelesen. Daten: ");
+            } catch(error) {
+                if (error.readyState === 0 && error.statusText === "error") {
+                    logging.error("Fehler beim Abrufen der API: Netzwerkfehler oder CORS-Problem");
+                } else {
+                    logging.error(error, "Sonstiger Fehler beim Abrufen der API: ");
                 }
             }
+        } else logging.info("Daten sind noch aktuell!")
+    }
+
+    // Je nach Trigger werden die Namen oder die IDs eines Arrays oder eines Objekts (dataSet) die zu einem anderen Array passen (mapArray) als neues Array (retVal) ausgegeben
+    function mapping(dataSet, mapArray, trigger) {
+        logging.data(dataSet, "Mapping dataSet: ");
+        logging.data(mapArray, "Mapping mapArray: ");
+        logging.data(trigger, "Mapping trigger: ");
+        if (trigger !== "caption" && trigger !== "id") {
+            logging.error("Mapping: Ungültiger Trigger!");
+            return [];
         }
 
-        // Erzeugt einen Button wenn eine aaoID festgelegt wurde (Checkbox in AAO Bearbeitung). Dieses wird hinter die entsprechende AAO gesetzt. Bei Klick wird ein Einstellungsfenster geöffnet.
-        if (frSettings.aaoId[lang]) {
-            $("#available_aao_" + frSettings.aaoId[lang])
-                .parent()
-                .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px" id="frOpenModal">
-                        <div class="glyphicon glyphicon-cog" style="color:LightSteelBlue"></div>
-                        </button>
-                        <div class="modal fade" id="frModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
-                        <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                        <div class="modal-header">
-                        <h3 class="modal-title" id="frModalLabel">${ lang == "de_DE" ? "Einstellungen" : "Settings" }</h3>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        const retVal = [];
+
+        // Überprüfen, ob dataSet ein Array oder ein Objekt ist
+        if (Array.isArray(dataSet)) {
+            dataSet.forEach(obj => {
+                if (trigger === "caption" && mapArray.includes(obj.id)) {
+                    retVal.push(obj.caption);
+                } else if (trigger === "id" && mapArray.includes(obj.caption)) {
+                    retVal.push(obj.id);
+                }
+            });
+        } else if (typeof dataSet === 'object') {
+            for (const id in dataSet) {
+                const obj = dataSet[id];
+                if (trigger === "caption" && mapArray.includes(parseInt(id))) {
+                    retVal.push(obj.caption);
+                } else if (trigger === "id" && mapArray.includes(obj.caption)) {
+                    retVal.push(parseInt(id));
+                }
+            }
+        } else {
+            logging.error("Mapping: Ungültiger DataSet-Typ!");
+        }
+
+        return retVal;
+    }
+
+    // Funktion zum Erstellen des frrSettings Objekt
+    function createSettingsObject() {
+        let newObject = {
+            scriptVersion: "TBD", // Zuletzt verwendete Script Version
+            [lang]:{
+                aaoId: "00000000", // Hier wird die eingestellte AAO Id gespeichert
+                general: { // Hier werden allgemeine Parameter gespeichert
+                    fAutoAlert: false, // Automatisch alarmieren wenn FRR ausgeführt wird
+                    fAutoShare: false, // Automatisch alarmieren und teilen wenn FRR ausgeführt wird
+                    jsKeyCode: 86, // Javascript Code für den HotKey. Wird mit v-Taste vorbelegt. 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
+                    fLoggingOn: false, // Schalter für logging
+                    fUseDispatch: false, // nur Fahrzeuge bestimmter Leitstellen nutzen
+                    alarmDelay: 1, // Standardmäßiges Delay beim automatischen alarmieren
+                    fWoAao: true // Alarmierung mit/ohne AAO
+                },
+                vehicleTypes: {
+                    lastUpdate: { }, // Hier kommt das Datum zum letzten Update rein.
+                    data: { }, // Hier die Daten aus der API
+                    captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
+                    settings: []// Hier die erlaubten Fahrzeuge
+                },
+                allowedBuildingIds: [], // Hier können die Einstellungen für Leitstellen/Zusätzlichen Gebäuden hinzugefügt werden
+                addBuildingIds: [] // Hier können die Einstellungen für Wachen hinzugefügt werden
+            }
+        };
+        return newObject;
+    }
+
+    // FUnktion zum öffnen des Modals (Settings)
+    function openFrrModal() {
+        $("#frModalBody").html(
+            `<label for="frrSelectGeneralSettings" style="margin-bottom: 0.2em;">${ lang == "de_DE" ? "Allgemeine Einstellungen" : "General settings" }</label>
+                                <div style="display: flex; flex-direction: column;margin-top: 0;">
+                                    <div style="margin-bottom: 0;">
+                                        <input type="checkbox" id="frrWoAao" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fWoAao ? "checked" : ""}>
+                                        <label for="frrWoAao" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Nutzung ohne AAO (ACHTUNG: Änderung verursacht Reload der Seite!)" : "Use without DINGENS" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0;">
+                                        <input type="checkbox" id="frrAutoAlert" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fAutoAlert ? "checked" : ""}>
+                                        <label for="frrAutoAlert" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Automatisch alarmieren (Verbandseinsatz)" : "alert automatically (alliance mission)" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0;">
+                                        <input type="checkbox" id="frrAutoShare" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fAutoShare ? "checked" : "" }>
+                                        <label for="frrAutoShare" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Automatisch teilen (Eigener Einsatz)" : "share automatically (own mission)" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0.3em;">
+                                        <input type="checkbox" id="frrLoggingOn" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fLoggingOn ? "checked" : "" }>
+                                        <label for="frrLoggingOn" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Logging ein" : "Logging enabled" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0.3em;">
+                                        <input type="number" id="frrAlarmDelay" min="0" max="10" style="width: 50px;" value="${frrSettings[lang].general.alarmDelay.toString() || ''}">
+                                        <label for="frrAlarmDelay" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe Verzögerungszeit (0-10s)" : "Enter alarm delay (0-10s)" }</label>
+                                    </div>
+                                    <div style="margin-bottom: 0.3em;">
+                                        <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" style="width: 50px;" value="${String.fromCharCode(frrSettings[lang].general.jsKeyCode) || ''}">
+                                        <label for="frrKeyCodeInput" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Eingabe HotKey (nur Buchstaben, kein A,D,E,N,S,W oder X)" : "Enter hot key (letters only, no A,D,E,N,S,W or X)" }</label>
+                                    </div>
+                                </div>
+                                <label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
+                                <select multiple class="form-control" id="frSelectVehicles" style="height:20em;width:35em;margin-bottom: 0.5em;"></select>
+
+                                <label for="frSelectDispatch" style="margin-bottom: 0.2em;margin-top= 0;">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
+                                <div style="display: flex; flex-direction: column;margin-top: ;">
+                                    <div style="margin-bottom: 0.3em;">
+                                        <input type="checkbox" id="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fUseDispatch ? "checked" : "" }>
+                                        <label for="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
+                                    </div>
+                                </div>
+                                <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:35em"></select>`
+                              );
+
+        $("#frModalFooter").html(`<button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
+                                  <button type="button" class="btn btn-success" id="frSavePreferences">${ lang == "de_DE" ? "Speichern" : "save" }</button>
+                                  <div class="pull-left" style="padding-top: 7px; padding-bottom: 7px;">Version: ${scriptVersion}</div>`);
+
+        // Liste der Leitstellennamen aus allen Gebäuden des Users extrahieren
+        var aDispatchCaptions = aUserBuildings
+        .filter(entry => entry.building_type === 7)
+        .map(entry => entry.caption);
+
+        // Namen der zusätzlich ausgewählten Gebäude hinzufügen
+        aDispatchCaptions = aDispatchCaptions.concat(mapping(aUserBuildings, frrSettings[lang].addBuildingIds, "caption"));
+
+        // Sortieren
+        aDispatchCaptions.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+        logging.data(aDispatchCaptions, "Inhalt von aDisplatchCaptions: ");
+
+        // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
+        for (const i in frrSettings[lang].vehicleTypes.captionList) {
+            $("#frSelectVehicles").append(`<option>${ frrSettings[lang].vehicleTypes.captionList[i] }</option>`);
+        }
+        // Fügt Optionen in der leitstellenauswahl hinzu (Aus Array mit Gebäudenamen)
+        for (const i in aDispatchCaptions) {
+            $("#frSelectDispatch").append(`<option>${ aDispatchCaptions[i] }</option>`);
+        }
+
+        // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
+        $("#frSelectVehicles").val(mapping(frrSettings[lang].vehicleTypes.data, frrSettings[lang].vehicleTypes.settings, "caption"));
+        $("#frSelectDispatch").val(mapping(aUserBuildings, frrSettings[lang].allowedBuildingIds, "caption"));
+    }
+
+    // ###############
+    // Initialisierung
+    // ###############
+
+    // Initialisieren der Logging Funktionen
+    logging();
+
+    // Vorbereitung der Sprache und der Einstellungsvariablen im lokalen Speicher, wenn diese nicht vorhanden sind
+    var lang = I18n.locale;
+    if (!localStorage.frrSettings) localStorage.setItem('frrSettings', JSON.stringify(createSettingsObject()));
+
+    // Anlegen und beschreiben diverser Variablen
+    var fLoggingOn = false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
+    var fFrrDone = false; // Flag ob First Responder schon ausgeführt wurde
+    var frrSettings = JSON.parse(localStorage.getItem('frrSettings')); // Einstellungen aus dem localStorage holen
+    var pointless = "Warning: pointless!";
+    var fMenuButtonAdded = false;
+    var aUserBuildings = await $.getJSON('/api/buildings'); // Die Gebäude des Benutzers abholen (Evtl. bei Buttonklick auf Menü holen?)
+    var scriptVersion = GM_info.script.version;
+
+    // Versionierung prüfen
+    if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
+
+    // HTML Code für Modal vorgeben (wird mehrfach genutzt)
+    var frrModalElement = `
+    <div class="modal fade" id="frModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="frModalLabel">${ lang == "de_DE" ? "Einstellungen FirstResponderReloaded" : "Settings Einstellungen FirstResponderReloaded" }</h3>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                         </button>
-                        </div>
-                        <div class="modal-body" id="frModalBody">
-                        </div>
-                        <div class="modal-footer" id="frModalFooter">
-                        </div>
-                        </div>
-                        </div>
-                        </div>`);
-        }
+                </div>
+                <div class="modal-body" id="frModalBody" style="max-height: 1000px; overflow-y: auto;"></div>
+                <div class="modal-footer" id="frModalFooter"></div>
+             </div>
+         </div>
+     </div>
+    `;
+
+    // Schreiben des Scriptstarts ins Log
+    logging.info("Wird ausgeführt!");
+    logging.data(JSON.parse(localStorage.frrSettings)[lang].vehicleTypes.lastUpdate, "Zeitstempel aus frrSettings nach Parsing: ");
+    logging.data(JSON.parse(localStorage.frrSettings)[lang].vehicleTypes.data, "Daten aus frrSettings vehicleTypes; ");
+
+    // ######################
+    // Einstellung der AAO ID
+    // ######################
+
+    // Fügt in der AAO Bearbeitung vor der ersten Checkbox eine eigene Check Box ein. Ist die entsprechende AAO in den Settings gespeichert wird das Häckchen gesetzt.
+    if (window.location.pathname.includes("aaos") && window.location.pathname.includes("edit") && !frrSettings[lang].general.fWoAao) {
+        $(".boolean.optional.checkbox")
+            .before(`<label class="form-check-label" for="frSaveAaoId">
+                         <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frrSettings[lang].aaoId) ? "checked" : "" }>
+                         ${ lang == "de_DE" ? "Diese ID für den First Responder nutzen. (ACHTUNG: Auswahl verursacht Reload!)" : "Use this id for FirstResponder. (CAUTION: Causes reload" }
+                     </label>`);
+
+        // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
+        $("body").on("click", "#frSaveAaoId", function() {
+            if ($("#frSaveAaoId")[0].checked) {
+                frrSettings[lang].aaoId = window.location.pathname.replace(/\D+/g, "");
+                logging.log("AAO ID wurde gesetzt");
+            } else {
+                frrSettings[lang].aaoId = "00000000";
+                logging.log("AAO ID wurde gelöscht");
+            }
+            localStorage.setItem("frrSettings", JSON.stringify(frrSettings));
+
+            // Reload nach Änderung
+            window.parent.location.reload();
+        });
     }
+
+    // ########################################################################################
+    // Hinzufügen der Settingbuttons mit Popup je nachdem ob AAO Button benutzt wird oder nicht
+    // ########################################################################################
+
+    // Button im Menü wenn AAO nich genutzt wird oder keine EIngestellt ist
+    if (window.location.pathname === "/" &&
+        (frrSettings[lang].general.fWoAao || frrSettings[lang].aaoId === "00000000")) {
+        logging.log("Menübutton wird eingefügt");
+        $('#navbar-main-collapse > ul').append(`<li class="btn btn-s" style="padding: 0px; border: 0px">
+                                                    <a href="#" id="frrOpenModal" data-toggle="modal" data-target="#frModal">
+                                                        <span style="margin-right: 2px;" class="glyphicon glyphicon-cog"></span>
+                                                        <span>First Responder</span>
+                                                    </a>
+                                                </li>
+                                                ${frrModalElement}
+                                                `);
+        fMenuButtonAdded = true;
+    };
+
+    // Button an der AAO wenn AAO verwendet wird und sie nicht 00000000 ist
+    if (window.location.pathname.includes("missions") &&
+        !frrSettings[lang].general.fWoAao && frrSettings[lang].aaoId !== "00000000") {
+        $("#available_aao_" + frrSettings[lang].aaoId)
+            .parent()
+            .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px" id="frrOpenModal">
+                        <div class="glyphicon glyphicon-cog" style="color:LightSteelBlue"></div>
+                    </button>
+                    ${frrModalElement}
+                    `);
+
+        fMenuButtonAdded = true;
+
+        setTimeout(function() {
+            document.getElementById("aao_timer_" + frrSettings[lang].aaoId).innerText = getAaoTime();
+        }, 800);
+
+        $("#aao_" + frrSettings[lang].aaoId).click(function() {
+            logging.log("First Responder AAO wurde geklickt!");
+            frrAlert();
+        });
+    }
+
+    // ##########################################################
+    // Hinzufügen des Alarmbuttons wenn keine AAO verwendet wird.
+    // ##########################################################
+
+    // Alarmbutton wenn keine AAO genutzt wird
+    if (window.location.pathname.includes("missions") &&
+        (frrSettings[lang].general.fWoAao || frrSettings[lang].aaoId === "00000000")) {
+        $('.flex-row.flex-nowrap:not(.navbar-right, .hidden-xs)')
+            .last()
+            .after(`<div class="flex-row flex-nowrap">
+                        <a href="#" aria-role="button" class="btn btn-primary btn-sm" id="frrAlertButton" style="height: 30px;">
+                            <img class="icon icons8-Phone-Filled" src="/images/icons8-phone_filled.svg" width="18" height="18" aria-hidden="true">
+                            <span aria-hidden="true">First Responder</span>
+                            <span class="badge" aria-hidden="true" id="frrTime">${ lang == "de_DE" ? "warte" : "wait" }</span>
+                        </a>
+                        <a href="#" aria-role="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#frModal" id="frrOpenModal" style="height: 30px;">
+                            <span class="glyphicon glyphicon-cog" style="font-size: 17px;"></span>
+                        </a>
+                    </div>
+                    ${frrModalElement}`);
+
+        fMenuButtonAdded = true;
+
+        setTimeout(function() {
+            document.getElementById("frrTime").innerText = getAaoTime();
+        }, 200);
+
+        $("body").on("click", "#frrAlertButton", function() {
+            logging.log("First Responder Alarmbutton wurde geklickt!");
+            frrAlert();
+        });
+    }
+
+    // ##############################
+    // Eventlistener für Menü Buttons
+    // ##############################
+
+    if (fMenuButtonAdded) {
+        logging.log("Auswertung menübuttons wurde hinzugefügt");
+        // Auswertung, dass der Button zum Speichern der Einstellungen gedrückt wurde. Speichert die IDs in frrSettings.
+        $("body").on("click", "#frSavePreferences", function() {
+            // Auswerten ob ein Reload durchgeführt und ob die AAO ID auf 0 gesetzt werden muss.
+            var fReload = false;
+            if (frrSettings[lang].general.fWoAao !== $("#frrWoAao")[0].checked) {
+                fReload = true;
+                if ($("#frrWoAao")[0].checked) {
+                    frrSettings[lang].aaoId = "00000000";
+                }
+            }
+
+            // Speichern der Daten aus dem Modal in die entsprechenden Variablen
+            frrSettings[lang].vehicleTypes.settings = mapping(frrSettings[lang].vehicleTypes.data, $("#frSelectVehicles").val(), "id");
+            frrSettings[lang].general.fUseDispatch = $("#frCbxUseLst")[0].checked;
+            frrSettings[lang].general.fAutoAlert = $("#frrAutoAlert")[0].checked;
+            frrSettings[lang].general.fAutoShare = $("#frrAutoShare")[0].checked;
+            frrSettings[lang].general.fLoggingOn = $("#frrLoggingOn")[0].checked;
+            frrSettings[lang].general.alarmDelay = parseInt($("#frrAlarmDelay").val());
+            frrSettings[lang].general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
+            frrSettings[lang].allowedBuildingIds = $("#frSelectDispatch").val() ? mapping(aUserBuildings, $("#frSelectDispatch").val(), "id") : [];
+            frrSettings[lang].general.fWoAao = $("#frrWoAao")[0].checked;
+
+            // Aktualisieren des local Storag nach übernahme der Daten
+            localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
+
+            // Reload wenn die Verwendung der AAO nicht genutzt wird.
+            if (fReload) window.parent.location.reload();
+
+            // Verändern des Modals nach Speichern (Speichern erfolgreich)
+            $("#frSavePreferences").addClass("hidden");
+            if (lang == "de_DE") {
+                $("#frModalBody").html("<h3><center>Die Einstellungen wurden gespeichert.</center></h5>");
+            } else {
+                $("#frModalBody").html("<h3><center>Settings successfully saved.</center></h5>");
+            }
+        });
+
+        $("body").on("click","#frrOpenModal", async function() {
+            //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
+            await fetchVehicles(lang);
+            logging.data(frrSettings[lang].vehicleTypes.data,"frrSettings.vehicleTypes.data");
+            openFrrModal();
+            var modalHeight = $(window).height() - 200;
+            logging.data(modalHeight, "Maximale höhe Modal Body");
+            $('#frModalBody').css('max-height', modalHeight + 'px');
+        });
+    }
+
+    // ######################################################
+    // Wacheneinstellungen für zusätzlich freigegebene Wachen
+    // ######################################################
 
     // Fügt eine Checkbox im Gebäude bearbeiten Fenster ein mit der ausgewählt werden kann, dass alle Fahrzeuge des Gebäudes verwendet werden dürfen
     if (window.location.pathname.includes("buildings") && window.location.pathname.includes("edit")) {
         $(".building_leitstelle_building_id")
             .after(`<div class="form-check">
-                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), dispatchSetup.additionalBuildings) > -1 ? "checked" : "" }>
+                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), frrSettings[lang].addBuildingIds) > -1 ? "checked" : "" }>
                       <label class="form-check-label" for="frCbxBuildingId">${ lang == "de_DE" ? "Wachen-ID im First Responder berücksichtigen" : "use this building id for First Responder" }</label>
-                    </div>`);
+                    </div>
+                    `);
+
+        // Auswertung, dass die Checkbox beim Gebäude Bearbeiten angeklickt wurde. Bei Abwahl löscht es die abgewählte ID aus dem Array. Bei Anwahl wird sie hinzugefügt (wenn noch nicht vorhanden).
+        $("body").on("click", "#frCbxBuildingId", function() {
+            var buildingId = +window.location.pathname.replace(/\D+/g, "")
+            if ($("#frCbxBuildingId")[0].checked) {
+                frrSettings[lang].addBuildingIds.push(buildingId);
+            } else {
+                frrSettings[lang].addBuildingIds.splice(frrSettings[lang].addBuildingIds.indexOf(buildingId), 1);
+                if (frrSettings[lang].allowedBuildingIds.includes(buildingId)) {
+                    frrSettings[lang].allowedBuildingIds.splice(frrSettings[lang].allowedBuildingIds.indexof(buildingId), 1);
+                }
+            }
+            localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
+        });
     }
 
-    // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
-    $("body").on("click", "#frSaveAaoId", function() {
-        if ($("#frSaveAaoId")[0].checked) {
-            frSettings.aaoId[lang] = window.location.pathname.replace(/\D+/g, "");
-        } else {
-            delete frSettings.aaoId[lang];
-        }
-        localStorage.firstResponder = JSON.stringify(frSettings);
-    });
+    // ##########################
+    // Eventlistener Tastaturkeys
+    // ##########################
 
-    // Auswertung, dass die Checkbox beim Gebäude Bearbeiten angeklickt wurde. Bei Abwahl löscht es die abgewählte ID aus dem Array. Bei Anwahl wird sie hinzugefügt (wenn noch nicht vorhanden).
-    $("body").on("click", "#frCbxBuildingId", function() {
-        var buildingId = +window.location.pathname.replace(/\D+/g, "")
-        if ($("#frCbxBuildingId")[0].checked) {
-            dispatchSetup.additionalBuildings.push(buildingId);
-        } else {
-            dispatchSetup.additionalBuildings.splice($.inArray(buildingId, dispatchSetup.additionalBuildings), 1);
-            if (dispatchSetup.dispatchId.includes(buildingId)) {
-                dispatchSetup.dispatchId.splice($.inArray(buildingId, dispatchSetup.dispatchId), 1);
+    // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
+    $(document).keyup(function(evt) {
+        logging.log('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
+        if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
+            logging.log("HotKey wurde gedrückt!");
+            frrAlert();
+        } else if (evt.target.id === "frrAlarmDelay") { // Prüft ob die Alarmverzögerung eingegeben wurde
+            logging.data(evt.target.value,"Inhalt des Eingabefeldes nach Änderung: ")
+            if (parseInt(evt.target.value) > 10) {
+                evt.preventDefault();
+                evt.target.value = "10"
+            } else if (parseInt(evt.target.value) < 0) {
+                evt.preventDefault();
+                evt.target.value = "0"
             }
         }
-        localStorage.fr_dispatchSetup = JSON.stringify(dispatchSetup);
     });
 
-    // Wählt die gespeicherten Einträge der Leitstellen an wenn die entsprechende Checkbox angewählt ist. Notwendig? Auswahl kann eigentlich immer angezeigt werden?
-    $("body").on("click", "#frCbxUseLst", function() {
-        if ($("#frCbxUseLst")[0].checked) {
-            $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
-        } else {
-            $("#frSelectDispatch").val([]);
+    // Event keydown zur Auswertung von Eingaben überwachen
+    // Hotkeys die nicht verwendet werden dürfen da sie vom Spiel genutzt werden: A = 65; D = 68; E = 69; N = 78; S = 83; W = 87; X = 88
+    $(document).keydown(function(evt) {
+        if (evt.target.id === "frrKeyCodeInput" && // Überprüft, ob das Ereignisziel das Eingabefeld ist
+            evt.keyCode !== 8 && // Überprüft, ob die Taste nicht Backspace ist
+            (!(evt.keyCode >= 65 && evt.keyCode <= 90) || // Überprüft, ob die Taste kein Buchstabe (A-Z) ist
+            (evt.keyCode === 65 || evt.keyCode === 68 || evt.keyCode === 69 || evt.keyCode === 78 ||
+             evt.keyCode === 83 || evt.keyCode === 87 || evt.keyCode === 88))) {
+            evt.preventDefault(); // Verhindert das Standardverhalten der Taste wenn die Taste nicht erlaubt ist
+            logging.warn('Taste ist als HotKey nicht erlaubt! CharCode: ' + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
         }
     });
-
-    // Auswertung, dass der Button zum Speichern der Einstellungen gedrückt wurde. Speichert die IDs in frSettings.
-    $("body").on("click", "#frSavePreferences", function() {
-        frSettings.vehicleTypes[lang] = mapVehicles($("#frSelectVehicles").val(), "type");
-        dispatchSetup.dispatchId = $("#frSelectDispatch").val() ? mapDispatchCenter($("#frSelectDispatch").val(), "id") : [];
-        dispatchSetup.useIt = $("#frCbxUseLst")[0].checked;
-        localStorage.fr_dispatchSetup = JSON.stringify(dispatchSetup);
-        localStorage.firstResponder = JSON.stringify(frSettings);
-        $("#frSavePreferences").addClass("hidden");
-
-        if (lang == "de_DE") {
-            $("#frModalBody").html("<h3><center>Die Einstellungen wurden gespeichert.</center></h5>");
-        } else {
-            $("#frModalBody").html("<h3><center>Settings successfully saved.</center></h5>");
-        }
-    });
-
-    $("body").on("click","#frOpenModal", function() {
-        $("#frModalBody").html(`<label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
-                                <select multiple class="form-control" id="frSelectVehicles" style="height:20em;width:40em"></select>
-                                <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="frCbxUseLst" ${ dispatchSetup.useIt ? "checked" : "" }>
-                                <label class="check-box-label" for="frCbxUseLst" style="margin-top:2em">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
-                                </div>
-                                <br>
-                                <label for="frSelectDispatch">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
-                                <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:40em"></select>
-                                </div>`);
-
-        $("#frModalFooter").html(`<button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
-                                  <button type="button" class="btn btn-success" id="frSavePreferences">${ lang == "de_DE" ? "Speichern" : "save" }</button>`);
-
-        // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
-        for (i in arrVehicles) {
-            $("#frSelectVehicles").append(`<option>${ arrVehicles[i] }</option>`);
-        }
-
-        // Fügt Optionen in der Leitstellenauswahl hinzu (Aus Array mit Leitstellennamen)
-        for (i in dispatchCenter) {
-            $("#frSelectDispatch").append(`<option>${ dispatchCenter[i] }</option>`);
-        }
-
-        // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
-        $("#frSelectVehicles").val(mapVehicles(frSettings.vehicleTypes[lang], "name"));
-        $("#frSelectDispatch").val(mapDispatchCenter(dispatchSetup.dispatchId, "name"));
-    });
-
-
-    // Hier findet die Magie statt. Wenn der FR AAO Button gedrückt wird, wird entsprechend der erste Eintrag gesucht der den Anforderungen entspricht.
-    $("#aao_" + frSettings.aaoId[lang]).click(function() {
-
-        var foundFirstResponder = false;
-
-        $(".vehicle_checkbox").each(function() {
-            var vType = +$(this).attr("vehicle_type_id"); // Fahrzeug Typ ID
-            var vId = $(this).attr("value"); //Fahrzeug ID
-            var lstId = +$(this).attr("building_id").split("_")[1]; //Leitstellen ID
-            var buId = +$(this).attr("building_id").split("_")[0]; // Gebäude ID
-
-            if (frSettings.vehicleTypes[lang].includes(vType) && //Fahrzeugtyp wurde ausgewählt UND
-                !$("#vehicle_checkbox_" + vId)[0].checked && // Checkbox ist NICHT angewählt UND
-                !$("#vehicle_checkbox_" + vId)[0].disabled && // Checkbox ist NICHT deaktiviert UND
-                (dispatchSetup.useIt === false || dispatchSetup.dispatchId.includes(lstId) || dispatchSetup.additionalBuildings.includes(buId))) { //Gebäudeauswertung wird nicht genutzt ODER Leitstelle wurde ausgewählt ODER Gebäude wurde ausgewählt
-                $("#vehicle_checkbox_" + vId).click(); // Die Checkbox wird ausgewählt
-                foundFirstResponder = true;
-                setTimeout(function() {
-                    $( ".alert_next" )[0].click(); // Alarmiert und geht zum nächsten Einsatz (Verzögert um eine Sekunde)
-                },1000);
-                return false; // Beendet die Suche nach dem First Responder
-            }
-        });
-
-        // Gibt einen Error in die Konsole wenn kein passendes Fahrzeug gefunden wurde.
-        if (!foundFirstResponder) { // Wenn kein geeignetes Fahrzeug gefunden wurde
-            console.error("First Responder Reloaded: Kein geeignetes Fahrzeug gefunden!");
-        }
-    });
-
-    // Wertet den Tastendruck auf die in var key hinterlegten taste aus und "drückt" auf die FirstResponder AAO
-    var fIsHotKeyPressed = false
-    $(document).keyup(function(e) {
-        if (!$("input:text").is(":focus") && e.keyCode === jsKeyCode && !fIsHotKeyPressed) { // Überprüft, ob kein Texteingabefeld den Fokus hat, die Taste dem Schlüsselentspricht und die Taste noch nicht gedrückt wurde
-            fIsHotKeyPressed = true;
-            $('#aao_' + frSettings.aaoId[lang] + '')[0].click(); // Klickt auf die AAO
-        }
-        logging("HotKey wurde gedrückt");
-    });
-
-    // Fahrzeit nach 1000 Millisekunden in AAO Button schreiben. 100ms gehen auch sind aber bei manchen Ladezeiten zu knapp.
-    setTimeout(setAaoTime,1000);
-
 })();
