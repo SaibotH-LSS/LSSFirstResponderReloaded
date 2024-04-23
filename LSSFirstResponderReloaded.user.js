@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.0.0
+// @version      2.0.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -81,6 +81,9 @@
             dataChanged = true;
             logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
         }
+
+        // Versionssprung von 2.0.0 auf 2.0.1
+        if (frrSettings.scriptVersion === "2.0.0") frrSettings.scriptVersion = "2.0.1";
 
         // !!!Letzter Schritt im Versioning!!!
         if (dataChanged) {
@@ -355,11 +358,11 @@
                                     </div>
                                     <div style="margin-bottom: 0;">
                                         <input type="checkbox" id="frrAutoAlert" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fAutoAlert ? "checked" : ""}>
-                                        <label for="frrAutoAlert" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Automatisch alarmieren (Verbandseinsatz)" : "alert automatically (alliance mission)" }</label>
+                                        <label for="frrAutoAlert" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Nach Auswahl alarmieren und nächter Einsatz (Verbandseinsatz)" : "Alert and next after selection (alliance mission)" }</label>
                                     </div>
                                     <div style="margin-bottom: 0;">
                                         <input type="checkbox" id="frrAutoShare" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fAutoShare ? "checked" : "" }>
-                                        <label for="frrAutoShare" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Automatisch teilen (Eigener Einsatz)" : "share automatically (own mission)" }</label>
+                                        <label for="frrAutoShare" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "Nach Auswahl alarmieren, teilen und nächster Einsatz (Eigener Einsatz)" : "Alert, share and next after selection (own mission)" }</label>
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
                                         <input type="checkbox" id="frrLoggingOn" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[lang].general.fLoggingOn ? "checked" : "" }>
@@ -648,38 +651,38 @@
         });
     }
 
-    // ##########################
-    // Eventlistener Tastaturkeys
-    // ##########################
+// ##########################
+// Eventlistener Tastaturkeys
+// ##########################
 
-    // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
-    $(document).keyup(function(evt) {
-        logging.log('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
-        if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
-            logging.log("HotKey wurde gedrückt!");
-            frrAlert();
-        } else if (evt.target.id === "frrAlarmDelay") { // Prüft ob die Alarmverzögerung eingegeben wurde
-            logging.data(evt.target.value,"Inhalt des Eingabefeldes nach Änderung: ")
-            if (parseInt(evt.target.value) > 10) {
-                evt.preventDefault();
-                evt.target.value = "10"
-            } else if (parseInt(evt.target.value) < 0) {
-                evt.preventDefault();
-                evt.target.value = "0"
-            }
+// Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
+$(document).keyup(function(evt) {
+    logging.log('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
+    if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
+        logging.log("HotKey wurde gedrückt!");
+        frrAlert();
+    } else if (evt.target.id === "frrAlarmDelay") { // Prüft ob die Alarmverzögerung eingegeben wurde
+        logging.data(evt.target.value,"Inhalt des Eingabefeldes nach Änderung: ")
+        if (parseInt(evt.target.value) > 10) {
+            evt.preventDefault();
+            evt.target.value = "10"
+        } else if (parseInt(evt.target.value) < 0) {
+            evt.preventDefault();
+            evt.target.value = "0"
         }
-    });
+    }
+});
 
-    // Event keydown zur Auswertung von Eingaben überwachen
-    // Hotkeys die nicht verwendet werden dürfen da sie vom Spiel genutzt werden: A = 65; D = 68; E = 69; N = 78; S = 83; W = 87; X = 88
-    $(document).keydown(function(evt) {
-        if (evt.target.id === "frrKeyCodeInput" && // Überprüft, ob das Ereignisziel das Eingabefeld ist
-            evt.keyCode !== 8 && // Überprüft, ob die Taste nicht Backspace ist
-            (!(evt.keyCode >= 65 && evt.keyCode <= 90) || // Überprüft, ob die Taste kein Buchstabe (A-Z) ist
-            (evt.keyCode === 65 || evt.keyCode === 68 || evt.keyCode === 69 || evt.keyCode === 78 ||
-             evt.keyCode === 83 || evt.keyCode === 87 || evt.keyCode === 88))) {
-            evt.preventDefault(); // Verhindert das Standardverhalten der Taste wenn die Taste nicht erlaubt ist
-            logging.warn('Taste ist als HotKey nicht erlaubt! CharCode: ' + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
-        }
-    });
+// Event keydown zur Auswertung von Eingaben überwachen
+// Hotkeys die nicht verwendet werden dürfen da sie vom Spiel genutzt werden: A = 65; D = 68; E = 69; N = 78; S = 83; W = 87; X = 88
+$(document).keydown(function(evt) {
+    if (evt.target.id === "frrKeyCodeInput" && // Überprüft, ob das Ereignisziel das Eingabefeld ist
+        evt.keyCode !== 8 && // Überprüft, ob die Taste nicht Backspace ist
+        (!(evt.keyCode >= 65 && evt.keyCode <= 90) || // Überprüft, ob die Taste kein Buchstabe (A-Z) ist
+         (evt.keyCode === 65 || evt.keyCode === 68 || evt.keyCode === 69 || evt.keyCode === 78 ||
+          evt.keyCode === 83 || evt.keyCode === 87 || evt.keyCode === 88))) {
+        evt.preventDefault(); // Verhindert das Standardverhalten der Taste wenn die Taste nicht erlaubt ist
+        logging.warn('Taste ist als HotKey nicht erlaubt! CharCode: ' + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
+    }
+});
 })();
