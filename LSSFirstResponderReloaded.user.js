@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.0.1
+// @version      2.0.2
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -82,8 +82,11 @@
             logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
         }
 
-        // Versionssprung von 2.0.0 auf 2.0.1
-        if (frrSettings.scriptVersion === "2.0.0") frrSettings.scriptVersion = "2.0.1";
+        // Versionssprung von 2.0.0 auf 2.0.2
+        if (frrSettings.scriptVersion === "2.0.0" || frrSettings.scriptVersion === "2.0.1") {
+            frrSettings.scriptVersion = "2.0.2";
+            dataChanged = true;
+        }
 
         // !!!Letzter Schritt im Versioning!!!
         if (dataChanged) {
@@ -209,7 +212,8 @@
             { prefix: "Polizei - ", buildings: [6, 11, 13, 17, 19, 24], priority: 5 }, // Polizei
             { prefix: "THW - ", buildings: [9], priority: 4 }, // THW
             { prefix: "SEG - ", buildings: [12, 20], priority: 3 }, // SEG
-            { prefix: "Wasser - ", buildings: [15], priority: 2 } // Wasserrettung
+            { prefix: "Wasser - ", buildings: [15], priority: 2 }, // Wasserrettung
+            { prefix: "Berg - ", buildings: [25], priority: 7 }, //
         ];
 
         const possibleBuildings = vehicle.possibleBuildings;
