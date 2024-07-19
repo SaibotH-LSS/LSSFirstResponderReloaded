@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.0.2
+// @version      2.1.0
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -77,14 +77,22 @@
                 localStorage.removeItem('aVehicleTypesNew');
                 logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
             }
-            frrSettings.scriptVersion = "2.0.0"
+            frrSettings.scriptVersion = "2.1.0"
             dataChanged = true;
-            logging.log("Versioning hat Version TBD zu 2.0.0 übersetzt")
+            logging.log("Versioning hat Version TBD zu 2.1.0 übersetzt")
         }
 
         // Versionssprung von 2.0.0 auf 2.0.2
         if (frrSettings.scriptVersion === "2.0.0" || frrSettings.scriptVersion === "2.0.1") {
             frrSettings.scriptVersion = "2.0.2";
+            dataChanged = true;
+        }
+        if (frrSettings.scriptVersion === "2.0.2") {
+            frrSettings[lang].customVehicleTypes = {};
+            frrSettings[lang].customVehicleTypes.captionList = [];
+            frrSettings[lang].customVehicleTypes.settings = [];
+            frrSettings[lang].customVehicleTypes.lastUpdate = " ";
+            frrSettings.scriptVersion = "2.1.0";
             dataChanged = true;
         }
 
@@ -106,7 +114,10 @@
             retVal.lstId = +$(this).attr("building_id").split("_")[1]; //Leitstellen ID
             retVal.buId = +$(this).attr("building_id").split("_")[0]; // Gebäude ID
             retVal.timeAttr = $("#vehicle_sort_" + retVal.vId).attr("timevalue");
-            if (frrSettings[lang].vehicleTypes.settings.includes(retVal.vType) && //Fahrzeugtyp wurde in den Einstellungen ausgewählt UND
+            retVal.vehicleType = $("#vehicle_element_content_" + retVal.vId).attr("vehicle_type");
+
+            if (((frrSettings[lang].vehicleTypes.settings.includes(retVal.vType) && !frrSettings[lang].customVehicleTypes.captionList.includes(retVal.vehicleType)) || // Fahrzeugtyp wurde ausgewählt und hat keine eigene Kategorie ODER
+                 frrSettings[lang].customVehicleTypes.settings.includes(retVal.vehicleType)) && // Eigener Fahrzeugtyp wurde ausgewählt UND
                 !this.checked && // Checkbox ist NICHT angewählt UND
                 !this.disabled && // Checkbox ist NICHT deaktiviert UND
                 (frrSettings[lang].general.fUseDispatch === false || frrSettings[lang].allowedBuildingIds.includes(retVal.lstId) || frrSettings[lang].addBuildingIds.includes(retVal.buId))) { // Gebäudesettings werden erfüllt.
@@ -278,12 +289,42 @@
                 logging.data(frrSettings[lang].vehicleTypes.data, "Daten aus API erfolgreich ausgelesen. Daten: ");
             } catch(error) {
                 if (error.readyState === 0 && error.statusText === "error") {
-                    logging.error("Fehler beim Abrufen der API: Netzwerkfehler oder CORS-Problem");
+                    logging.error("Fehler beim Abrufen der LSSM API: Netzwerkfehler oder CORS-Problem");
                 } else {
-                    logging.error(error, "Sonstiger Fehler beim Abrufen der API: ");
+                    logging.error(error, "Sonstiger Fehler beim Abrufen der LSSM API: ");
                 }
             }
+            await fetchCustomVehicles(lang);
         } else logging.info("Daten sind noch aktuell!")
+    }
+
+    // Holt die Custom Vehicles aus der LSS API und schreibt diese in den local Storage
+    async function fetchCustomVehicles(lang) {
+        logging.log("Eigene fahrzeugtypen werden abgerufen");
+        try {
+            const userVehicles = await $.getJSON('/api/vehicles');
+            const vehicleTypeSet = new Set();
+            userVehicles.forEach(vehicle => {
+                if (vehicle.vehicle_type_caption) {
+                    vehicleTypeSet.add(vehicle.vehicle_type_caption);
+                }
+            });
+            frrSettings[lang].customVehicleTypes.captionList = Array.from(vehicleTypeSet);
+            frrSettings[lang].customVehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+            localStorage.setItem("frrSettings", JSON.stringify(frrSettings)); // Neue Daten werden in localStorage gespeichert
+
+            frrSettings[lang].customVehicleTypes.lastUpdate = new Date().toDateString();
+            localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
+
+            logging.data(frrSettings[lang].customVehicleTypes.captionList, "Eigene fahrzeugtypen erfolgreich abgerufen: ");
+
+        } catch(error) {
+            if (error.readyState === 0 && error.statusText === "error") {
+                logging.error("Fehler beim Abrufen der LSS API: Netzwerkfehler oder CORS-Problem");
+            } else {
+                logging.error(error, "Sonstiger Fehler beim Abrufen der LSS API: ");
+            }
+        }
     }
 
     // Je nach Trigger werden die Namen oder die IDs eines Arrays oder eines Objekts (dataSet) die zu einem anderen Array passen (mapArray) als neues Array (retVal) ausgegeben
@@ -344,6 +385,11 @@
                     captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
                     settings: []// Hier die erlaubten Fahrzeuge
                 },
+                customVehicleTypes: {
+                    lastUpdate: " ", // Hier kommt das Datum zum letzten Update rein.
+                    captionList: [], // Hier kommen die Namen aller eigenen Fahrzeugtypen als Array rein
+                    settings: [] // hier kommen die Namen der ausgewählten eigenen Fahrzeugtypen als Array rein
+                },
                 allowedBuildingIds: [], // Hier können die Einstellungen für Leitstellen/Zusätzlichen Gebäuden hinzugefügt werden
                 addBuildingIds: [] // Hier können die Einstellungen für Wachen hinzugefügt werden
             }
@@ -383,7 +429,10 @@
                                 </div>
                                 <label for="frSelectVehicles">${ lang == "de_DE" ? "Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "vehicle-types (multiple-choice with Strg + click)" }</label>
                                 <select multiple class="form-control" id="frSelectVehicles" style="height:20em;width:35em;margin-bottom: 0.5em;"></select>
-
+                                <label for="frSelectCustomVehicles" style="margin-bottom: 0.2em;margin-top= 0;">${ lang == "de_DE" ? "Eigene Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)" : "Custom Vehicletypes (multiple-choice with Strg + click)" }</label>
+                                <div style="display: flex; flex-direction: column;margin-top: ;">
+                                </div>
+                                <select multiple class="form-control" id="frSelectCustomVehicles" style="height:10em;width:35em;margin-bottom: 0.5em;"></select>
                                 <label for="frSelectDispatch" style="margin-bottom: 0.2em;margin-top= 0;">${ lang == "de_DE" ? "Leitstellen (Mehrfachauswahl mit Strg + Klick)" : "dispatchcenter (multiple-choice with Strg + click)" }</label>
                                 <div style="display: flex; flex-direction: column;margin-top: ;">
                                     <div style="margin-bottom: 0.3em;">
@@ -391,7 +440,7 @@
                                         <label for="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ lang == "de_DE" ? "nur Fahrzeuge bestimmter Leitstellen wählen" : "only use specific dispatchcenter" }</label>
                                     </div>
                                 </div>
-                                <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:35em"></select>`
+                                <select multiple class="form-control" id="frSelectDispatch" style="height:10em;width:35em;margin-bottom: 0.5em;"></select>`
                               );
 
         $("#frModalFooter").html(`<button type="button" class="btn btn-danger" data-dismiss="modal">${ lang == "de_DE" ? "Schließen" : "close" }</button>
@@ -418,10 +467,15 @@
         for (const i in aDispatchCaptions) {
             $("#frSelectDispatch").append(`<option>${ aDispatchCaptions[i] }</option>`);
         }
+        // Fügt Optionen in der "Custom Vehicle Types" Liste hinzu (Aus Array der Fahrzeugtypen)
+        for (const i in frrSettings[lang].customVehicleTypes.captionList) {
+            $("#frSelectCustomVehicles").append(`<option>${ frrSettings[lang].customVehicleTypes.captionList[i] }</option>`);
+        }
 
         // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
         $("#frSelectVehicles").val(mapping(frrSettings[lang].vehicleTypes.data, frrSettings[lang].vehicleTypes.settings, "caption"));
         $("#frSelectDispatch").val(mapping(aUserBuildings, frrSettings[lang].allowedBuildingIds, "caption"));
+        $("#frSelectCustomVehicles").val(frrSettings[lang].customVehicleTypes.settings);
     }
 
     // ###############
@@ -446,6 +500,11 @@
 
     // Versionierung prüfen
     if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
+
+    // Täglicher Abruf der eigenen Fahrzeugtypen
+    if (frrSettings[lang].customVehicleTypes.lastUpdate !== new Date().toDateString()) {
+        fetchCustomVehicles(lang);
+    }
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
     var frrModalElement = `
@@ -517,7 +576,10 @@
         fMenuButtonAdded = true;
     };
 
-    // Button an der AAO wenn AAO verwendet wird und sie nicht 00000000 ist
+    // ############################################################################
+    // Hinzufügen des Menübuttons wenn AAO verwendet wird und sie nicht 0000000 ist
+    // ############################################################################
+
     if (window.location.pathname.includes("missions") &&
         !frrSettings[lang].general.fWoAao && frrSettings[lang].aaoId !== "00000000") {
         $("#available_aao_" + frrSettings[lang].aaoId)
@@ -565,7 +627,9 @@
 
         setTimeout(function() {
             document.getElementById("frrTime").innerText = getAaoTime();
-        }, 200);
+        }, 800);
+
+        logging.data(window.location.pathname.replace(/\D+/g, ""), "Pfadname Alarmfenster: "); // Dies nutzen um die Restdauer auszulesen!
 
         $("body").on("click", "#frrAlertButton", function() {
             logging.log("First Responder Alarmbutton wurde geklickt!");
@@ -591,15 +655,16 @@
             }
 
             // Speichern der Daten aus dem Modal in die entsprechenden Variablen
-            frrSettings[lang].vehicleTypes.settings = mapping(frrSettings[lang].vehicleTypes.data, $("#frSelectVehicles").val(), "id");
-            frrSettings[lang].general.fUseDispatch = $("#frCbxUseLst")[0].checked;
+            frrSettings[lang].general.fWoAao = $("#frrWoAao")[0].checked;
             frrSettings[lang].general.fAutoAlert = $("#frrAutoAlert")[0].checked;
             frrSettings[lang].general.fAutoShare = $("#frrAutoShare")[0].checked;
             frrSettings[lang].general.fLoggingOn = $("#frrLoggingOn")[0].checked;
             frrSettings[lang].general.alarmDelay = parseInt($("#frrAlarmDelay").val());
             frrSettings[lang].general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
+            frrSettings[lang].vehicleTypes.settings = $("#frSelectVehicles").val() ? mapping(frrSettings[lang].vehicleTypes.data, $("#frSelectVehicles").val(), "id") : [];
+            frrSettings[lang].customVehicleTypes.settings = $("#frSelectCustomVehicles").val() ? $("#frSelectCustomVehicles").val() : [];
+            frrSettings[lang].general.fUseDispatch = $("#frCbxUseLst")[0].checked;
             frrSettings[lang].allowedBuildingIds = $("#frSelectDispatch").val() ? mapping(aUserBuildings, $("#frSelectDispatch").val(), "id") : [];
-            frrSettings[lang].general.fWoAao = $("#frrWoAao")[0].checked;
 
             // Aktualisieren des local Storag nach übernahme der Daten
             localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
@@ -662,7 +727,7 @@
     // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
     $(document).keyup(function(evt) {
         logging.log('Gedrückter Keycode im keyup Event: ' + evt.keyCode);
-        if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
+        if (!$("input:text").is(":focus") && evt.keyCode === frrSettings[lang].general.jsKeyCode && window.location.pathname.includes("missions")) { // Überprüft, ob kein Texteingabefeld den Fokus hat und die Taste dem Schlüsselentspricht
             logging.log("HotKey wurde gedrückt!");
             frrAlert();
         } else if (evt.target.id === "frrAlarmDelay") { // Prüft ob die Alarmverzögerung eingegeben wurde
@@ -689,4 +754,5 @@
             logging.warn('Taste ist als HotKey nicht erlaubt! CharCode: ' + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
         }
     });
+
 })();
