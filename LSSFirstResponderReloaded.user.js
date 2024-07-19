@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.1.0
+// @version      2.1.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -77,7 +77,7 @@
                 localStorage.removeItem('aVehicleTypesNew');
                 logging.log("aVehicleTypesNew wurde aus localStorage gelöscht");
             }
-            frrSettings.scriptVersion = "2.1.0"
+            frrSettings.scriptVersion = "2.1.1"
             dataChanged = true;
             logging.log("Versioning hat Version TBD zu 2.1.0 übersetzt")
         }
@@ -87,12 +87,18 @@
             frrSettings.scriptVersion = "2.0.2";
             dataChanged = true;
         }
+        // Versionssprung von 2.0.2 auf 2.1.0
         if (frrSettings.scriptVersion === "2.0.2") {
             frrSettings[lang].customVehicleTypes = {};
             frrSettings[lang].customVehicleTypes.captionList = [];
             frrSettings[lang].customVehicleTypes.settings = [];
             frrSettings[lang].customVehicleTypes.lastUpdate = " ";
             frrSettings.scriptVersion = "2.1.0";
+            dataChanged = true;
+        }
+        // Versionssprung von 2.1.0 auf 2.1.1
+        if (frrSettings.scriptVersion === "2.1.0") {
+            frrSettings.scriptVersion = "2.1.1";
             dataChanged = true;
         }
 
@@ -600,6 +606,9 @@
             logging.log("First Responder AAO wurde geklickt!");
             frrAlert();
         });
+
+        // Fokus auf das Alarmfenster legen (Problem bei Chrome)
+        window.focus();
     }
 
     // ##########################################################
@@ -629,12 +638,13 @@
             document.getElementById("frrTime").innerText = getAaoTime();
         }, 800);
 
-        logging.data(window.location.pathname.replace(/\D+/g, ""), "Pfadname Alarmfenster: "); // Dies nutzen um die Restdauer auszulesen!
-
         $("body").on("click", "#frrAlertButton", function() {
             logging.log("First Responder Alarmbutton wurde geklickt!");
             frrAlert();
         });
+
+        // Fokus auf das Alarmfenster legen (Problem bei Chrome)
+        window.focus();
     }
 
     // ##############################
