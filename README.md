@@ -17,6 +17,7 @@ Bekannte Fehler:
 
 Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
+  - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
   - Es soll ein Hinweis angezeigt werden ob der FR rechtzeitig ankommt.
 
 Release V2.1.1 (19.07.2024):
