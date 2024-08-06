@@ -20,6 +20,9 @@ Geplante Funktionserweiterungen:
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
   - Es soll ein Hinweis angezeigt werden ob der FR rechtzeitig ankommt.
 
+Release V2.1.2 (06.08.2024):
+  - Funktionsaufruf zum Abrufen der eigenen Fahrzeugtypen korrigiert.
+
 Release V2.1.1 (19.07.2024):
   - Fokus Verlust im Chrome Browser korrigiert.
 
