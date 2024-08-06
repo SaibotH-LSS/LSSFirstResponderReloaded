@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.1.1
+// @version      2.1.2
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -96,9 +96,9 @@
             frrSettings.scriptVersion = "2.1.0";
             dataChanged = true;
         }
-        // Versionssprung von 2.1.0 auf 2.1.1
-        if (frrSettings.scriptVersion === "2.1.0") {
-            frrSettings.scriptVersion = "2.1.1";
+        // Versionssprung von 2.1.0 auf 2.1.2
+        if (frrSettings.scriptVersion === "2.1.0" || frrSettings.scriptVersion === "2.1.1") {
+            frrSettings.scriptVersion = "2.1.2";
             dataChanged = true;
         }
 
@@ -509,7 +509,7 @@
 
     // Täglicher Abruf der eigenen Fahrzeugtypen
     if (frrSettings[lang].customVehicleTypes.lastUpdate !== new Date().toDateString()) {
-        fetchCustomVehicles(lang);
+        await fetchCustomVehicles(lang);
     }
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
