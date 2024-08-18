@@ -11,14 +11,21 @@ Ich übernehme keinerlei Garantie, dass dieses Skript funktioniert. Die falsche 
 
 Bekannte Fehler:
   -  Aktuell nur offiziell für (polizei.)leitstellenspiel.de freigegeben (Internationale Nutzung wird nicht unterstützt)
-  -  Fahrzeit wird über eine Verzögerung in die AAO geschrieben. Dies kann bei längeren Ladezeiten dazu führen, dass die Zeit wieder überschrieben wird.
   -  Löscht man die eingestellte AAO kann der Menübutton nicht mehr angezeigt werden
   -  Die Zusätzlichen Gebäude werden in der Leitstellenliste angezeigt. Dort können sie zwar an und abgewählt werden jedoch hat dies keine Auswirkungen.
 
 Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
-  - Es soll ein Hinweis angezeigt werden ob der FR rechtzeitig ankommt.
+
+Release V2.2.0 (18.08.2024):
+  - Anzeige ob Fahrzeug rechtzeitig ankommt
+  - Abruf der Fahrzeit verbessert
+  - Erkennung ob schon ein Fahrzeug alarmiert wurde
+  - Reload Funktion eingeführt
+  - Zähler eingeführt
+  - Logging geändert
+  - kleinere Fehler behoben
 
 Release V2.1.2 (06.08.2024):
   - Funktionsaufruf zum Abrufen der eigenen Fahrzeugtypen korrigiert.
