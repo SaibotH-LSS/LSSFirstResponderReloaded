@@ -18,6 +18,10 @@ Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
 
+Release V3.0.0 (23.08.2024):
+  - First Responder 2Go eingeführt
+  - Nutzung einer AAO als FRR Button verbessert (Löschen der AAO wird abgefangen, AAO wird geleert wenn sie als FRR AAO ausgewählt wird usw.)
+
 Release V2.2.0 (18.08.2024):
   - Anzeige ob Fahrzeug rechtzeitig ankommt
   - Abruf der Fahrzeit verbessert
