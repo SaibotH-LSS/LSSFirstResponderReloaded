@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      2.2.0
+// @version      3.0.0
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -13,7 +13,7 @@
 // @icon         https://www.leitstellenspiel.de/favicon.ico
 // @match        *.leitstellenspiel.de
 // @match        *.leitstellenspiel.de/missions/*
-// @match        *.leitstellenspiel.de/aaos/*/edit
+// @match        *.leitstellenspiel.de/aaos*
 // @match        *.leitstellenspiel.de/buildings/*/edit
 // @run-at       document-idle
 // @grant        GM_info
@@ -78,13 +78,19 @@
         }
         // Versionssprung von 2.1.0 auf 2.2.0
         if (["2.1.0", "2.1.1", "2.1.2"].includes(frrSettings.scriptVersion)) {
-            frrSettings.scriptVersion = version;
+            frrSettings.scriptVersion = "2.2.0";
             frrSettings[lang].general.counter = 0;
             frrSettings[lang].general.fAllowReload = false;
             frrSettings[lang].general.loggingLevel = "error";
             frrSettings[lang].general.intReloadCount = 0;
             delete frrSettings[lang].general.fLoggingOn;
         }
+        // Versionssprung auf 3.0.0
+        if (["2.2.0"].includes(frrSettings.scriptVersion)) {
+            frrSettings[lang].general.fAaoIdModified = false;
+            frrSettings.scriptVersion = version;
+        }
+
         // Speichern des Versioning
         saveStorage("Versioning");
     }
@@ -218,7 +224,6 @@
             console.error(errorText + `Kein Prefix für Fahrzeug gefunden! Fahrzeugname: ${caption}`);
             vehicle.caption = "ZZZ - " + caption;
         }
-
     };
 
     // Holt die Fahrzeugdaten aus der LSSM API ab, verarbeitet diese (Präfix und Fahrzeugnamenliste) und legt diese im local Storage ab.
@@ -328,7 +333,8 @@
                     counter: 0, // Zähler wie oft FRR genutzt wurde
                     fAllowReload: false, // Erlaubt einen Reload wenn sich etwas am Einsatz geändert hat.
                     loggingLevel: "error",
-                    intReloadCount: 0
+                    intReloadCount: 0,
+                    fAaoIdModified: false
                 },
                 vehicleTypes: {
                     lastUpdate: 0, // Hier kommt das Datum zum letzten Update rein.
@@ -665,6 +671,7 @@
     var intCycleCount = 0;
     var fAlrdyThere;
     var aMissions = JSON.parse(localStorage.getItem('aMissions'));
+    const strPathname = window.location.pathname;
     const now = new Date().getTime();
     const errorText = "## FRR ##  ";
 
@@ -695,16 +702,51 @@
     // Versionierung prüfen
     if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
 
-    // Reload Counter zurücksetzen
+    // Reload Counter zurücksetzen und AAO Check
     if (window.location.pathname === "/") {
+        // Prüfen ob AAO noch existiert
+        if (frrSettings[lang].aaoId !== "00000000") {
+            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings[lang].aaoId}`);
+            if (!aaoResponse.ok) {
+                if (fLoggingOn) console.log(errorText + "AAO in Schnittstelle nicht vorhanden", aaoResponse);
+                frrSettings[lang].aaoId = "00000000";
+                saveStorage("AAO Check Hauptseite");
+                setTimeout(function() {
+                    window.parent.location.reload();
+                },10);
+            }
+        }
+        // Reload Counter zurücksetzen
         frrSettings[lang].general.intReloadCount = 0;
         saveStorage("Initialisierung auf Hauptseite");
     }
+
     // Missions Id und "Schon da" abrufen wenn Einsatzfenster
     if (window.location.pathname.includes("missions")) {
         const currMissionId = getMissionId();
         objMissionInfo = await getMissionInfo(currMissionId);
         fAlrdyThere = !!document.querySelector(".glyphicon-user");
+    }
+
+    // Reload wenn AAO ID geändert wurde und Check der AAO ID
+    if (strPathname === "/aaos") {
+        // Prüfen ob AAO noch existiert
+        if (frrSettings[lang].aaoId !== "00000000") {
+            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings[lang].aaoId}`);
+            if (!aaoResponse.ok) {
+                if (fLoggingOn) console.log(errorText + "AAO in Schnittstelle nicht vorhanden", aaoResponse);
+                frrSettings[lang].aaoId = "00000000";
+                frrSettings[lang].general.fAaoIdModified = true;
+            }
+        }
+        // Reload Durchführen falls erforderlich
+        if (frrSettings[lang].general.fAaoIdModified) {
+            frrSettings[lang].general.fAaoIdModified = false;
+            saveStorage("AAO Reload und Check");
+            setTimeout(function() {
+                window.parent.location.reload();
+            },10);
+        }
     }
 
     // Täglicher Abruf der eigenen Fahrzeugtypen
@@ -730,30 +772,111 @@
      </div>
     `;
 
-    // ######################
-    // Einstellung der AAO ID
-    // ######################
+    // ########################################################
+    // Einstellung der AAO ID und Umsetzung First Responder 2Go
+    // ########################################################
 
     // Fügt in der AAO Bearbeitung vor der ersten Checkbox eine eigene Check Box ein. Ist die entsprechende AAO in den Settings gespeichert wird das Häckchen gesetzt.
-    if (window.location.pathname.includes("aaos") && window.location.pathname.includes("edit") && !frrSettings[lang].general.fWoAao) {
-        $(".boolean.optional.checkbox")
-            .before(`<label class="form-check-label" for="frSaveAaoId">
-                         <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frrSettings[lang].aaoId) ? "checked" : "" }>
-                         ${ lang == "de_DE" ? "Diese ID für den First Responder nutzen. (ACHTUNG: Auswahl verursacht Reload!)" : "Use this id for FirstResponder. (CAUTION: Causes reload" }
-                     </label>`);
+    if (strPathname.match(/\/aaos\/\d+\/edit/)) {
+        const sAaoId = strPathname.match(/\/aaos\/(\d+)\/edit/)[1];
+        const elSaveButton = document.getElementById('save-button');
+        var elTabContentDiv = document.querySelector('.tab-content')
+        // Checkbox für FRR hinzufügen
+        if (!frrSettings[lang].general.fWoAao) {
+            $(".boolean.optional.checkbox")
+                .first()
+                .before(`<label class="form-check-label" for="frSaveAaoId">
+                             <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frrSettings[lang].aaoId) ? "checked" : "" }>
+                             ${ lang == "de_DE" ? "Diese ID für den First Responder nutzen." : "Use this id for FirstResponder." }
+                         </label>
+                         <p class="help-block"><b>ACHTUNG:</b> Auswahl verursacht Reload! Alle Fahrzeugauswahlen werden gelöscht! Die FRR AAO kann nicht als First Responder 2Go genutzt werden!</p>`);
 
-        // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
-        $("body").on("click", "#frSaveAaoId", function() {
-            if ($("#frSaveAaoId")[0].checked) {
-                frrSettings[lang].aaoId = window.location.pathname.replace(/\D+/g, "");
-            } else {
-                frrSettings[lang].aaoId = "00000000";
-            }
-            saveStorage("AAO festlegen");
+            // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
+            $("body").on("click", "#frSaveAaoId", function() {
+                if ($("#frSaveAaoId")[0].checked) {
+                    frrSettings[lang].aaoId = sAaoId;
+                } else {
+                    frrSettings[lang].aaoId = "00000000";
+                }
+                // Alle ausgewählten Fahrzeuge löschen
+                elTabContentDiv.querySelectorAll('input').forEach(function(input) {
+                    input.value = '0';
+                });
+                // Reload anstoßen wenn gespeichert wurde
+                frrSettings[lang].general.fAaoIdModified = true;
+                saveStorage("AAO festlegen");
 
-            // Reload nach Änderung
-            window.parent.location.reload();
-        });
+                // Speicherm
+                elSaveButton.click();
+            });
+        }
+        // FR 2Go Konfiguration setzen
+        if (sAaoId !== frrSettings[lang].aaoId) {
+            // Hinzufügen eines Buttons
+            var btnFrToGo = document.createElement('a');
+            btnFrToGo.setAttribute('href', '#');
+            btnFrToGo.setAttribute('aria-role', 'button');
+            btnFrToGo.className = 'btn btn-primary pull-right';
+            btnFrToGo.id = 'btnfrToGo';
+            btnFrToGo.style.margin = '7px';
+            btnFrToGo.innerHTML = `<span aria-hidden="true">Lade FR 2Go Konfig</span>`;
+
+            elSaveButton.parentNode.insertBefore(btnFrToGo, elSaveButton.nextSibling);
+
+            var fTempClicked = false;
+            btnFrToGo.addEventListener('click', function(event) {
+                event.preventDefault();
+                if (!fTempClicked) {
+                    const fUserConfirmed = confirm('Möchten sie wirklich die First Responder 2Go Konfig laden? Alle einstellungen gehen verloren!');
+                    if (fUserConfirmed) {
+                        fTempClicked = true;
+                        // FR 2Go Tab erstellen
+                        var elTabs = document.getElementById('tabs');
+                        elTabs.querySelectorAll('li').forEach(function(item) {
+                            item.removeAttribute('class');
+                        });
+                        elTabs.insertAdjacentHTML('beforeend', `
+                            <li role="presentation" class="active">
+                                <a href="#frgo_config" aria-controls="vehicle_type_captions" role="tab" data-toggle="tab">First Responder 2Go</a>
+                            </li>
+                        `);
+
+                        // Config String erstellen
+                        const sConfigIds = frrSettings[lang].vehicleTypes.settings.join(', ');
+
+                        // Neues FR 2Go Input Element erstellen
+                        var elFrGoDiv = document.createElement('div');
+                        elFrGoDiv.setAttribute('role', 'tabpanel');
+                        elFrGoDiv.className = 'tab-pane active';
+                        elFrGoDiv.id = 'frgo_config';
+                        elFrGoDiv.innerHTML = `
+                            <div class="form-group fake_number optional aao_frgo">
+                                <div class="col-sm-3 control-label">
+                                    <label class="fake_number optional " for="aao_frgo">First Responder 2Go</label>
+                                </div>
+                                <div class="col-sm-9">
+                                    <input class="fake_number optional form-control" id="vehicle_type_frr" name="vehicle_type_ids[[${sConfigIds}]]" type="number" value="1">
+                                    <p class="help-block">Die First Responder 2Go Konfiguration besteht nur aus den Standard-Fahrzeugtypen. Die Übernahme der eigenen Fahrzeugkategorien ist nicht möglich! Nachdem die Konfiguration eingefügt wurde, muss die AAO noch gespeichert werden!</p>
+                                </div>
+                            </div>
+                        `;
+
+                        // frr Tab Inhalt in tab-Content einfügen und alle anderen inputs auf 0 setzen
+                        elTabContentDiv.querySelectorAll('input').forEach(function(input) {
+                            input.value = '0';
+                        });
+                        elTabContentDiv.querySelectorAll('.tab-pane').forEach(function(tabPane) {
+                            tabPane.classList.remove('active');
+                        });
+                        elTabContentDiv.appendChild(elFrGoDiv);
+                        setTimeout(function() {
+                            elTabContentDiv.scrollIntoView({ behavior: 'smooth' });
+                            btnFrToGo.innerHTML = `<span aria-hidden="true"><-- Nicht vergessen!</span>`;
+                        },20);
+                    }
+                }
+            });
+        }
     }
 
     // ##############################################
@@ -969,5 +1092,4 @@
             console.error(errorText + "Taste ist als HotKey nicht erlaubt! CharCode: " + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
         }
     });
-
 })();
