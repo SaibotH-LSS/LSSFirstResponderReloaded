@@ -10,8 +10,7 @@ Ich übernehme keinerlei Garantie, dass dieses Skript funktioniert. Die falsche 
 !!! Die Nutzung ist also auf eigene Gefahr !!!
 
 Bekannte Fehler:
-  -  Aktuell nur offiziell für (polizei.)leitstellenspiel.de freigegeben (Internationale Nutzung wird nicht unterstützt)
-  -  Löscht man die eingestellte AAO kann der Menübutton nicht mehr angezeigt werden
+  -  Aktuell nur offiziell für (polizei.)leitstellenspiel.de freigegeben (Internationale Nutzung wird nicht unterstützt.
   -  Die Zusätzlichen Gebäude werden in der Leitstellenliste angezeigt. Dort können sie zwar an und abgewählt werden jedoch hat dies keine Auswirkungen.
 
 Geplante Funktionserweiterungen:
