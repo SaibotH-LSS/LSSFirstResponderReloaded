@@ -18,7 +18,7 @@ Geplante Funktionserweiterungen:
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
 
 Release V3.0.1 (26.09.2024):
-  - Abruf der Gebäude des Users wird nur noch beim öffnen des Menüs durchgeführt.
+  - Abruf der Gebäude des Users wird nur noch beim Öffnen des Menüs durchgeführt.
 
 Release V3.0.0 (23.08.2024):
   - First Responder 2Go eingeführt
