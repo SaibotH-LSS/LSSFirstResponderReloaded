@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.0.0
+// @version      3.0.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -88,6 +88,10 @@
         // Versionssprung auf 3.0.0
         if (["2.2.0"].includes(frrSettings.scriptVersion)) {
             frrSettings[lang].general.fAaoIdModified = false;
+            frrSettings.scriptVersion = "3.0.0";
+        }
+
+        if (["3.0.0"].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
 
@@ -665,7 +669,7 @@
     var fStopBadgeSetting = false; // Flag ob FRR ausgelöst wurde
     var pointless = "Warning: pointless!";
     var fMenuButtonAdded = false;
-    var aUserBuildings = await $.getJSON('/api/buildings'); // Die Gebäude des Benutzers abholen (Evtl. bei Buttonklick auf Menü holen?)
+    var aUserBuildings;
     var scriptVersion = GM_info.script.version;
     var objMissionInfo;
     var intCycleCount = 0;
@@ -1018,6 +1022,8 @@
             fStopBadgeSetting = true;
             //Ausführen der Funktion zum holen der Fahrzeugdaten in der entsprechenden Sprache
             await fetchVehicles(lang);
+            // Abholen der User Gebäude
+            aUserBuildings = await $.getJSON('/api/buildings');
             openFrrModal();
             var modalHeight = $(window).height() - 200;
             $('#frModalBody').css('max-height', modalHeight + 'px');
