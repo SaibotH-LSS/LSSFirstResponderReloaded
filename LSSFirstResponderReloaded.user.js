@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.1.0
+// @version      3.1.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -134,10 +134,14 @@
             frrSettings[sLangRegion].general.fAaoIdModified = false;
             frrSettings.scriptVersion = "3.0.0";
         }
-        // Versionssprung auf aktuelle Version
+        // Versionssprung auf 3.1.0
         if (['3.0.0', '3.0.1'].includes(frrSettings.scriptVersion)) {
             Object.assign(frrSettings, frrSettings[sLangRegion]);
             delete frrSettings[sLangRegion];
+            frrSettings.scriptVersion = '3.1.0';
+        }
+        // Versionssprung auf aktuelle Version
+        if (['3.1.0'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
         // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
@@ -742,7 +746,6 @@
 
     // Übersetzungs Funktion
     function t(key) {
-        var sLang = 'en';
         return objTranslations[sLang]?.[key] || objTranslations.en[key] || 'No translation found!';
     }
 
