@@ -16,6 +16,9 @@ Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
 
+Release V3.1.1 (11.11.2024):
+  - Testvariable gelöscht (Sprache wurde zum Testen dauerhaft auf Englisch gesetzt)
+
 Release V3.1.0 (11.11.2024):
   - Internationalisierung des Skripts. Nutzung in allen Ländern in der die LSSM API unterstützt wird
   - Bei schon vorhandenem Fahrzeug kann durch 5s Gedrückthalten des Hotkeys das Skript erneut ein FR alarmieren.
