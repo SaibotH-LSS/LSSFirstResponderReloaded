@@ -1,14 +1,20 @@
 // ==UserScript==
-// @name         [BETA]FirstResponderReloaded
+// @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.1.0
+// @version      3.1.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
 // @homepage     https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
 // @homepageURL  https://github.com/SaibotH-LSS/LSSFirstResponderReloaded
 // @supportURL   https://github.com/SaibotH-LSS/LSSFirstResponderReloaded/issues
+// @updateURL    https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
+// @downloadURL  https://raw.githubusercontent.com/SaibotH-LSS/LSSFirstResponderReloaded/main/LSSFirstResponderReloaded.user.js
 // @icon         https://www.leitstellenspiel.de/favicon.ico
+// @match        *.leitstellenspiel.de
+// @match        *.leitstellenspiel.de/missions/*
+// @match        *.leitstellenspiel.de/aaos*
+// @match        *.leitstellenspiel.de/buildings/*/edit
 // @match        *.missionchief.com
 // @match        *.missionchief.com/missions/*
 // @match        *.missionchief.com/aaos*
@@ -17,14 +23,44 @@
 // @match        *.missionchief.co.uk/missions/*
 // @match        *.missionchief.co.uk/aaos*
 // @match        *.missionchief.co.uk/buildings/*/edit
-// @match        *.leitstellenspiel.de
-// @match        *.leitstellenspiel.de/missions/*
-// @match        *.leitstellenspiel.de/aaos*
-// @match        *.leitstellenspiel.de/buildings/*/edit
+// @match        *.operacni-stredisko.cz
+// @match        *.operacni-stredisko.cz/missions/*
+// @match        *.operacni-stredisko.cz/aaos*
+// @match        *.operacni-stredisko.cz/buildings/*/edit
+// @match        *.missionchief-australia.com
+// @match        *.missionchief-australia.com/missions/*
+// @match        *.missionchief-australia.com/aaos*
+// @match        *.missionchief-australia.com/buildings/*/edit
+// @match        *.centro-de-mando.es
+// @match        *.centro-de-mando.es/missions/*
+// @match        *.centro-de-mando.es/aaos*
+// @match        *.centro-de-mando.es/buildings/*/edit
+// @match        *.operateur112.fr
+// @match        *.operateur112.fr/missions/*
+// @match        *.operateur112.fr/aaos*
+// @match        *.operateur112.fr/buildings/*/edit
+// @match        *.operatore112.it
+// @match        *.operatore112.it/missions/*
+// @match        *.operatore112.it/aaos*
+// @match        *.operatore112.it/buildings/*/edit
+// @match        *.meldkamerspel.com
+// @match        *.meldkamerspel.com/missions/*
+// @match        *.meldkamerspel.com/aaos*
+// @match        *.meldkamerspel.com/buildings/*/edit
+// @match        *.operatorratunkowy.pl
+// @match        *.operatorratunkowy.pl/missions/*
+// @match        *.operatorratunkowy.pl/aaos*
+// @match        *.operatorratunkowy.pl/buildings/*/edit
+// @match        *.nodsentralspillet.com
+// @match        *.nodsentralspillet.com/missions/*
+// @match        *.nodsentralspillet.com/aaos*
+// @match        *.nodsentralspillet.com/buildings/*/edit
+// @match        *.larmcentralen-spelet.se
+// @match        *.larmcentralen-spelet.se/missions/*
+// @match        *.larmcentralen-spelet.se/aaos*
+// @match        *.larmcentralen-spelet.se/buildings/*/edit
 // @run-at       document-idle
 // @grant        GM_info
-//
-//
 // ==/UserScript==
 
 // Definition von globalen Variablen um Fehlermeldungen zu unterdrücken
@@ -33,7 +69,6 @@
 (async function() {
     'use strict';
 
-    const testTime = new Date().getTime();
     // ######################
     // Funktionsdeklarationen
     // ######################
@@ -45,12 +80,12 @@
             // firstResponder aus den alten Daten holen und anschließend löschen
             if (localStorage.getItem("firstResponder")) {
                 const oldData = JSON.parse(localStorage.getItem('firstResponder'));
-                if (frrSettings[sLangRegion].vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
-                    frrSettings[sLangRegion].vehicleTypes.settings = oldData.vehicleTypes[sLangRegion];
+                if (frrSettings.vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
+                    frrSettings.vehicleTypes.settings = oldData.vehicleTypes[sLangRegion];
                 }
-                if (frrSettings[sLangRegion].aaoId === "00000000" && oldData.aaoId[sLangRegion]) {
-                    frrSettings[sLangRegion].aaoId = oldData.aaoId[sLangRegion];
-                    frrSettings[sLangRegion].general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
+                if (frrSettings.aaoId === "00000000" && oldData.aaoId[sLangRegion]) {
+                    frrSettings.aaoId = oldData.aaoId[sLangRegion];
+                    frrSettings.general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
                 }
                 // alte Daten nach der Übernahme löschen.
                 localStorage.removeItem('firstResponder');
@@ -59,16 +94,16 @@
             if (localStorage.getItem("fr_dispatchSetup")) {
                 const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
                 // Dispatch IDs holen
-                if (frrSettings[sLangRegion].allowedBuildingIds.length === 0) {
-                    frrSettings[sLangRegion].allowedBuildingIds = oldData.dispatchId;
+                if (frrSettings.allowedBuildingIds.length === 0) {
+                    frrSettings.allowedBuildingIds = oldData.dispatchId;
                 }
                 // Additional buildings holen
-                if (frrSettings[sLangRegion].addBuildingIds.length === 0) {
-                    frrSettings[sLangRegion].addBuildingIds = oldData.additionalBuildings;
+                if (frrSettings.addBuildingIds.length === 0) {
+                    frrSettings.addBuildingIds = oldData.additionalBuildings;
                 }
                 // UseIt holen
-                if (frrSettings[sLangRegion].general.fUseDispatch !== oldData.useIt) {
-                    frrSettings[sLangRegion].general.fUseDispatch = oldData.useIt;
+                if (frrSettings.general.fUseDispatch !== oldData.useIt) {
+                    frrSettings.general.fUseDispatch = oldData.useIt;
                 }
                 // alte Daten nach der Übernahme löschen.
                 localStorage.removeItem('fr_dispatchSetup');
@@ -99,19 +134,26 @@
             frrSettings[sLangRegion].general.fAaoIdModified = false;
             frrSettings.scriptVersion = "3.0.0";
         }
-
+        // Versionssprung auf 3.1.0
         if (['3.0.0', '3.0.1'].includes(frrSettings.scriptVersion)) {
+            Object.assign(frrSettings, frrSettings[sLangRegion]);
+            delete frrSettings[sLangRegion];
+            frrSettings.scriptVersion = '3.1.0';
+        }
+        // Versionssprung auf aktuelle Version
+        if (['3.1.0'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
-
+        // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
+        setLogging();
         // Speichern des Versioning
         saveStorage("Versioning");
     }
 
-    function getFirstResponder() { // ##################################################################################################################Funktion ggf. anders aufrufen (Muss bei alert nicht nochmal ausgeführt werden)#############
+    // First Responder Daten finden und in Objekt Variable ablegen
+    function getFirstResponder() {
         var retVal = {};
         var fFirstResponderFound = false;
-
         // Alle Checkboxen durchgehen
         const checkboxes = document.querySelectorAll(".vehicle_checkbox");
         for (var i = 0; i < checkboxes.length; i++) {
@@ -127,11 +169,11 @@
             const sortValue = timeElement.getAttribute("sortvalue");
             const calcButton = timeElement.querySelector('a.calculateTime');
 
-            if (((frrSettings[sLangRegion].vehicleTypes.settings.includes(retVal.vType) && !frrSettings[sLangRegion].customVehicleTypes.captionList.includes(retVal.vehicleType)) || // Fahrzeugtyp wurde ausgewählt und hat keine eigene Kategorie ODER
-                 frrSettings[sLangRegion].customVehicleTypes.settings.includes(retVal.vehicleType)) && // Eigener Fahrzeugtyp wurde ausgewählt UND
+            if (((frrSettings.vehicleTypes.settings.includes(retVal.vType) && !frrSettings.customVehicleTypes.captionList.includes(retVal.vehicleType)) || // Fahrzeugtyp wurde ausgewählt und hat keine eigene Kategorie ODER
+                 frrSettings.customVehicleTypes.settings.includes(retVal.vehicleType)) && // Eigener Fahrzeugtyp wurde ausgewählt UND
                 !checkbox.checked && // Checkbox ist NICHT angewählt UND
                 !checkbox.disabled && // Checkbox ist NICHT deaktiviert UND
-                (frrSettings[sLangRegion].general.fUseDispatch === false || frrSettings[sLangRegion].allowedBuildingIds.includes(retVal.lstId) || frrSettings[sLangRegion].addBuildingIds.includes(retVal.buId))) { // Gebäudesettings werden erfüllt.
+                (frrSettings.general.fUseDispatch === false || frrSettings.allowedBuildingIds.includes(retVal.lstId) || frrSettings.addBuildingIds.includes(retVal.buId))) { // Gebäudesettings werden erfüllt.
 
                 if (calcButton) {
                     calcButton.click();
@@ -145,13 +187,26 @@
                 break; // Beendet die Schleife
             }
         }
-
         // Fahrzeug zurückgeben wenn eines gefunden wurde
         if (fFirstResponderFound) {
-            return retVal;
+            objFirstResponder = retVal;
         } else {
             console.error(errorText + "get FirstResponder hat kein passendes Fahrzeug gefunden");
-            return undefined;
+            objFirstResponder = undefined;
+        }
+    }
+
+    function updateFirstResponder(event) {
+        if ((event.target && event.target.type === 'checkbox') || event === 'update') {
+            observer.disconnect();
+            getFirstResponder();
+            observer.observe(targetNode, observerConfig);
+            if (fLoggingOn) console.log(errorText + 'First Responder wurde aktualisiert. Event: ', event);
+        } else if (event === 'lastUpdate') {
+            targetNode.removeEventListener('change', updateFirstResponder);
+            observer.disconnect();
+            getFirstResponder();
+            if (fLoggingOn) console.log(errorText + 'First Responder wurde final aktualisiert. Event: ', event);
         }
     }
 
@@ -162,21 +217,21 @@
             if (fDebuggingOn) console.log(errorText + "Es ist schon ein Fahrzeug vom User da. fAlrdyThere|NextMisBut: ", fAlrdyThere, document.getElementById("mission_next_mission_btn"));
             document.getElementById("mission_next_mission_btn").click();
         } else if (!fFrrDone) {
-            //const firstResponder = getFirstResponder()
+            updateFirstResponder('lastUpdate');
             if (objFirstResponder) {
                 let shareButton = $( ".alert_next_alliance" )[0];
                 $("#vehicle_checkbox_" + objFirstResponder.vId).click();
                 fFrrDone = true;
-                frrSettings[sLangRegion].general.counter++;
+                frrSettings.general.counter++;
                 saveStorage("frrAlert");
-                if (shareButton && frrSettings[sLangRegion].general.fAutoShare) {
+                if (shareButton && frrSettings.general.fAutoShare) {
                     setTimeout(function() {
                         $( ".alert_next_alliance" )[0].click();
-                    },frrSettings[sLangRegion].general.alarmDelay * 1000);
-                } else if (frrSettings[sLangRegion].general.fAutoAlert) {
+                    },frrSettings.general.alarmDelay * 1000);
+                } else if (frrSettings.general.fAutoAlert) {
                     setTimeout(function() {
                         $( ".alert_next" )[0].click();
-                    },frrSettings[sLangRegion].general.alarmDelay * 1000);
+                    },frrSettings.general.alarmDelay * 1000);
                 }
             } else {
                 console.error(errorText + "frrAlert(): Es konnte kein First Responder alarmiert werden!")
@@ -185,19 +240,8 @@
         }
     }
 
-    // Findet die Zeit bis FR da ist
-    function getFrTime() { // #################################################################################################################################Ist eigentlich nur eine Formatierung der Zeit für den Badge. Aufruf ändern?
-        //const firstResponder = getFirstResponder();
-        // Prüfen ob es einen First Responder gibt und das Zeitattribut vorhanden ist
-        if (!objFirstResponder) {
-            return t('noFr');
-        }
-        if (!objFirstResponder.timeAttr) {
-            return "N/A";
-        }
-
-        // Zeit in Sekunden wird in Stunden, Minuten und Sekunden umgerechnet
-        var seconds = parseInt(objFirstResponder.timeAttr);
+    // Formatiert eine Anzahl von Sekunden zu einem String im Format HH:MM:SS
+    function secToStr(seconds) {
         var hours = Math.floor(seconds / 3600); // Berechnung der Stunden
         var minutes = Math.floor((seconds % 3600) / 60); // Berechnung der Minuten
         var remainingSeconds = seconds % 60; // Berechnung der verbleibenden Sekunden
@@ -214,11 +258,10 @@
         } else {
             frrTimeRetVal = formattedMinutes + ":" + formattedSeconds; // MM:SS
         }
-
         return frrTimeRetVal;
     }
 
-    // Funktion zum Hinzufügen von Prefixen zum Fahrzeugnamen. Priorität dient dazu gewisse Fahrzeuge z.B. dem Rettungsdienst zuzuweisen anstatt der Feuerwehr da das entsprechende Fahrzeug in beiden Wachen stationiert sein kann.
+    // Funktion zum Hinzufügen von Prefixen zum Fahrzeugnamen
     function updateCaptionPrefix(vehicle) {
         const possibleBuildings = vehicle.possibleBuildings;
         let sPrefix = '';
@@ -237,28 +280,27 @@
     // Holt die Fahrzeugdaten aus der LSSM API ab, verarbeitet diese (Präfix und Fahrzeugnamenliste) und legt diese im local Storage ab.
     async function fetchVehicles() {
         // Daten werden abgerufen und bearbeitet wenn noch keine vorhanden sind oder die Daten zu alt sind
-        if (Object.keys(frrSettings[sLangRegion].vehicleTypes.data).length === 0 || frrSettings[sLangRegion].vehicleTypes.lastUpdate < (now - 5 * 60 * 1000)) {
+        if (Object.keys(frrSettings.vehicleTypes.data).length === 0 || frrSettings.vehicleTypes.lastUpdate < (now - 5 * 60 * 1000)) {
 
             // Daten werden abgerufen und über try ... catch Fehler abgefangen.
             try {
-                console.log ("https://api.lss-manager.de/" + sLangRegion + "/vehicles")
-                frrSettings[sLangRegion].vehicleTypes.data = await $.getJSON("https://api.lss-manager.de/" + sLangRegion + "/vehicles"); // Ruft die Daten ab. Wenn ein Error kommt wird der folgende Code nicht mehr bearbeitet.
-                frrSettings[sLangRegion].vehicleTypes.lastUpdate = now; // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
+                frrSettings.vehicleTypes.data = await $.getJSON("https://api.lss-manager.de/" + sLangRegion + "/vehicles"); // Ruft die Daten ab. Wenn ein Error kommt wird der folgende Code nicht mehr bearbeitet.
+                frrSettings.vehicleTypes.lastUpdate = now; // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
 
                 // Prefix hinzufügen
                 if (objBuildingMap[sRegion]) {
-                    Object.keys(frrSettings[sLangRegion].vehicleTypes.data).forEach(function(key) {
-                        const vehicle = frrSettings[sLangRegion].vehicleTypes.data[key];
+                    Object.keys(frrSettings.vehicleTypes.data).forEach(function(key) {
+                        const vehicle = frrSettings.vehicleTypes.data[key];
                         updateCaptionPrefix(vehicle);
                     });
                 };
 
                 // Speichert die Fahrzeugnamen in ein Array und Sortiert es
-                frrSettings[sLangRegion].vehicleTypes.captionList = [];
-                for (const [vehicleId, vehicleData] of Object.entries(frrSettings[sLangRegion].vehicleTypes.data)) {
-                    frrSettings[sLangRegion].vehicleTypes.captionList.push(vehicleData.caption);
+                frrSettings.vehicleTypes.captionList = [];
+                for (const [vehicleId, vehicleData] of Object.entries(frrSettings.vehicleTypes.data)) {
+                    frrSettings.vehicleTypes.captionList.push(vehicleData.caption);
                 }
-                frrSettings[sLangRegion].vehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+                frrSettings.vehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
                 saveStorage("Fahrzeugdaten");
             } catch(error) {
                 if (error.readyState === 0 && error.statusText === "error") {
@@ -281,9 +323,9 @@
                     vehicleTypeSet.add(vehicle.vehicle_type_caption);
                 }
             });
-            frrSettings[sLangRegion].customVehicleTypes.captionList = Array.from(vehicleTypeSet);
-            frrSettings[sLangRegion].customVehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
-            frrSettings[sLangRegion].customVehicleTypes.lastUpdate = now;
+            frrSettings.customVehicleTypes.captionList = Array.from(vehicleTypeSet);
+            frrSettings.customVehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
+            frrSettings.customVehicleTypes.lastUpdate = now;
             saveStorage("Eigene Fahrzeugdaten");
         } catch(error) {
             if (error.readyState === 0 && error.statusText === "error") {
@@ -332,35 +374,33 @@
     function createSettingsObject() {
         return {
             scriptVersion: "TBD",
-            [sLangRegion]:{
-                aaoId: "00000000", // Hier wird die eingestellte AAO Id gespeichert
-                general: { // Hier werden allgemeine Parameter gespeichert
-                    fAutoAlert: false, // Automatisch alarmieren wenn FRR ausgeführt wird
-                    fAutoShare: false, // Automatisch alarmieren und teilen wenn FRR ausgeführt wird
-                    jsKeyCode: 86, // Javascript Code für den HotKey. Wird mit v-Taste vorbelegt. 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
-                    fUseDispatch: false, // nur Fahrzeuge bestimmter Leitstellen nutzen
-                    alarmDelay: 1, // Standardmäßiges Delay beim automatischen alarmieren
-                    fWoAao: true, // Alarmierung mit/ohne AAO
-                    counter: 0, // Zähler wie oft FRR genutzt wurde
-                    fAllowReload: false, // Erlaubt einen Reload wenn sich etwas am Einsatz geändert hat.
-                    loggingLevel: "error",
-                    intReloadCount: 0,
-                    fAaoIdModified: false
-                },
-                vehicleTypes: {
-                    lastUpdate: 0, // Hier kommt das Datum zum letzten Update rein.
-                    data: { }, // Hier die Daten aus der API
-                    captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
-                    settings: []// Hier die erlaubten Fahrzeuge
-                },
-                customVehicleTypes: {
-                    lastUpdate: " ", // Hier kommt das Datum zum letzten Update rein.
-                    captionList: [], // Hier kommen die Namen aller eigenen Fahrzeugtypen als Array rein
-                    settings: [] // hier kommen die Namen der ausgewählten eigenen Fahrzeugtypen als Array rein
-                },
-                allowedBuildingIds: [], // Hier können die Einstellungen für Leitstellen/Zusätzlichen Gebäuden hinzugefügt werden
-                addBuildingIds: [] // Hier können die Einstellungen für Wachen hinzugefügt werden
-            }
+            aaoId: "00000000", // Hier wird die eingestellte AAO Id gespeichert
+            general: { // Hier werden allgemeine Parameter gespeichert
+                fAutoAlert: false, // Automatisch alarmieren wenn FRR ausgeführt wird
+                fAutoShare: false, // Automatisch alarmieren und teilen wenn FRR ausgeführt wird
+                jsKeyCode: 86, // Javascript Code für den HotKey. Wird mit v-Taste vorbelegt. 65=a 86=v - nicht unbeding ASCII! Siehe hier: https://www.toptal.com/developers/keycode
+                fUseDispatch: false, // nur Fahrzeuge bestimmter Leitstellen nutzen
+                alarmDelay: 1, // Standardmäßiges Delay beim automatischen alarmieren
+                fWoAao: true, // Alarmierung mit/ohne AAO
+                counter: 0, // Zähler wie oft FRR genutzt wurde
+                fAllowReload: false, // Erlaubt einen Reload wenn sich etwas am Einsatz geändert hat.
+                loggingLevel: "error",
+                intReloadCount: 0,
+                fAaoIdModified: false
+            },
+            vehicleTypes: {
+                lastUpdate: 0, // Hier kommt das Datum zum letzten Update rein.
+                data: { }, // Hier die Daten aus der API
+                captionList: [], // Hier die sortierte Liste mit den Namen der Fahrzeuge
+                settings: []// Hier die erlaubten Fahrzeuge
+            },
+            customVehicleTypes: {
+                lastUpdate: " ", // Hier kommt das Datum zum letzten Update rein.
+                captionList: [], // Hier kommen die Namen aller eigenen Fahrzeugtypen als Array rein
+                settings: [] // hier kommen die Namen der ausgewählten eigenen Fahrzeugtypen als Array rein
+            },
+            allowedBuildingIds: [], // Hier können die Einstellungen für Leitstellen/Zusätzlichen Gebäuden hinzugefügt werden
+            addBuildingIds: [] // Hier können die Einstellungen für Wachen hinzugefügt werden
         };
     }
 
@@ -371,35 +411,35 @@
             `<label for="frrSelectGeneralSettings" style="margin-bottom: 0.2em;">${ t('generalSettings') }</label>
                                 <div style="display: flex; flex-direction: column;margin-top: 0;">
                                     <div style="margin-bottom: 0;">
-                                        <input type="checkbox" id="frrWoAao" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[sLangRegion].general.fWoAao ? "checked" : ""}>
+                                        <input type="checkbox" id="frrWoAao" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings.general.fWoAao ? "checked" : ""}>
                                         <label for="frrWoAao" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('useAao') }</label>
                                     </div>
                                     <div style="margin-bottom: 0;">
-                                        <input type="checkbox" id="frrAutoAlert" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[sLangRegion].general.fAutoAlert ? "checked" : ""}>
+                                        <input type="checkbox" id="frrAutoAlert" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings.general.fAutoAlert ? "checked" : ""}>
                                         <label for="frrAutoAlert" style="margin-top: 0.; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('alertAndNext') }</label>
                                     </div>
                                     <div style="margin-bottom: 0;">
-                                        <input type="checkbox" id="frrAutoShare" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[sLangRegion].general.fAutoShare ? "checked" : "" }>
+                                        <input type="checkbox" id="frrAutoShare" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings.general.fAutoShare ? "checked" : "" }>
                                         <label for="frrAutoShare" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('alertShareNext') }</label>
                                     </div>
                                     <div style="margin-bottom: 0;">
-                                        <input type="checkbox" id="frrAllowReload" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[sLangRegion].general.fAllowReload ? "checked" : "" }>
+                                        <input type="checkbox" id="frrAllowReload" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings.general.fAllowReload ? "checked" : "" }>
                                         <label for="frrAllowReload" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('reloadOnChange') }</label>
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
                                         <select id="frrDebugging" name="Debugging">
-                                            <option value="error">Error</option>
-                                            <option value="debug">Debug</option>
-                                            <option value="complete">Complete</option>
+                                            <option value="error">${ t('error') }</option>
+                                            <option value="debug">${ t('debug') }</option>
+                                            <option value="complete">${ t('complete') }</option>
                                         </select>
                                         <label for="frrDebugging" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('debugging') }</label>
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
-                                        <input type="number" id="frrAlarmDelay" min="0" max="10" style="width: 50px;" value="${frrSettings[sLangRegion].general.alarmDelay.toString() || ''}">
+                                        <input type="number" id="frrAlarmDelay" min="0" max="10" style="width: 50px;" value="${frrSettings.general.alarmDelay.toString() || ''}">
                                         <label for="frrAlarmDelay" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('delay') }</label>
                                     </div>
                                     <div style="margin-bottom: 0.3em;">
-                                        <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" style="width: 50px;" value="${String.fromCharCode(frrSettings[sLangRegion].general.jsKeyCode) || ''}">
+                                        <input type="text" id="frrKeyCodeInput" placeholder="Enter KeyCode" maxlength="1" style="width: 50px;" value="${String.fromCharCode(frrSettings.general.jsKeyCode) || ''}">
                                         <label for="frrKeyCodeInput" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('setHotkey') }</label>
                                     </div>
                                 </div>
@@ -412,7 +452,7 @@
                                 <label for="frSelectDispatch" style="margin-bottom: 0.2em;margin-top= 0;">${ t('dispatchCenters') }</label>
                                 <div style="display: flex; flex-direction: column;margin-top: ;">
                                     <div style="margin-bottom: 0.3em;">
-                                        <input type="checkbox" id="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings[sLangRegion].general.fUseDispatch ? "checked" : "" }>
+                                        <input type="checkbox" id="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;" ${ frrSettings.general.fUseDispatch ? "checked" : "" }>
                                         <label for="frCbxUseLst" style="margin-top: 0; margin-bottom: 0;margin-left: 0.2em;font-weight: normal;">${ t('useDispatch') }</label>
                                     </div>
                                 </div>
@@ -421,10 +461,10 @@
 
         $("#frModalFooter").html(`<button type="button" class="btn btn-danger frrclose" data-dismiss="modal">${ t('close') }</button>
                                   <button type="button" class="btn btn-success" id="frSavePreferences">${ t('save') }</button>
-                                  <div class="pull-left" style="padding-top: 7px; padding-bottom: 7px;">Version: ${scriptVersion} | ${ t('counter') }: ${frrSettings[sLangRegion].general.counter}</div>`);
+                                  <div class="pull-left" style="padding-top: 7px; padding-bottom: 7px;">${ t('version') }: ${scriptVersion} | ${ t('counter') }: ${frrSettings.general.counter}</div>`);
 
         // Auswahl des Logginglevels aus Speicher setzen
-        document.getElementById("frrDebugging").value = frrSettings[sLangRegion].general.loggingLevel
+        document.getElementById("frrDebugging").value = frrSettings.general.loggingLevel
 
         // Liste der Leitstellennamen aus allen Gebäuden des Users extrahieren
         var aDispatchCaptions = aUserBuildings
@@ -432,28 +472,28 @@
         .map(entry => entry.caption);
 
         // Namen der zusätzlich ausgewählten Gebäude hinzufügen
-        aDispatchCaptions = aDispatchCaptions.concat(mapping(aUserBuildings, frrSettings[sLangRegion].addBuildingIds, "caption"));
+        aDispatchCaptions = aDispatchCaptions.concat(mapping(aUserBuildings, frrSettings.addBuildingIds, "caption"));
 
         // Sortieren
         aDispatchCaptions.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
 
         // Fügt Optionen in der Fahrzeugauswahl hinzu (Aus Array mit Fahrzeugnamen)
-        for (const i in frrSettings[sLangRegion].vehicleTypes.captionList) {
-            $("#frSelectVehicles").append(`<option>${ frrSettings[sLangRegion].vehicleTypes.captionList[i] }</option>`);
+        for (const i in frrSettings.vehicleTypes.captionList) {
+            $("#frSelectVehicles").append(`<option>${ frrSettings.vehicleTypes.captionList[i] }</option>`);
         }
         // Fügt Optionen in der leitstellenauswahl hinzu (Aus Array mit Gebäudenamen)
         for (const i in aDispatchCaptions) {
             $("#frSelectDispatch").append(`<option>${ aDispatchCaptions[i] }</option>`);
         }
         // Fügt Optionen in der "Custom Vehicle Types" Liste hinzu (Aus Array der Fahrzeugtypen)
-        for (const i in frrSettings[sLangRegion].customVehicleTypes.captionList) {
-            $("#frSelectCustomVehicles").append(`<option>${ frrSettings[sLangRegion].customVehicleTypes.captionList[i] }</option>`);
+        for (const i in frrSettings.customVehicleTypes.captionList) {
+            $("#frSelectCustomVehicles").append(`<option>${ frrSettings.customVehicleTypes.captionList[i] }</option>`);
         }
 
         // Wählt die Fahrzeuge und Leitstellen an die zuvor gespeichert wurden
-        $("#frSelectVehicles").val(mapping(frrSettings[sLangRegion].vehicleTypes.data, frrSettings[sLangRegion].vehicleTypes.settings, "caption"));
-        $("#frSelectDispatch").val(mapping(aUserBuildings, frrSettings[sLangRegion].allowedBuildingIds, "caption"));
-        $("#frSelectCustomVehicles").val(frrSettings[sLangRegion].customVehicleTypes.settings);
+        $("#frSelectVehicles").val(mapping(frrSettings.vehicleTypes.data, frrSettings.vehicleTypes.settings, "caption"));
+        $("#frSelectDispatch").val(mapping(aUserBuildings, frrSettings.allowedBuildingIds, "caption"));
+        $("#frSelectCustomVehicles").val(frrSettings.customVehicleTypes.settings);
     }
 
     // Funktion zum parsen eines Zeitstrings (string to seconds)
@@ -482,101 +522,147 @@
         return seconds;
     }
 
+    // Funktion zum färben des Badges
+    function setBadgeColor(element, backgroundColor, color) {
+        element.style.backgroundColor = backgroundColor;
+        element.style.color = color;
+    }
+
+    // Dynamische Elemente für Badgesetting holen
+    function getDynamicElements() {
+        return {
+            missionTimerElement: document.getElementById('mission_countdown_' + missionNum),
+            missionProgrBar: parseInt(document.getElementById("mission_bar_" + missionNum).style.width, 10),
+            pumpingCountdown: document.querySelector('.pumping-countdown')
+        };
+    }
+
+    // Text im Badge setzen
+    function setBadgeText(badgeElement) {
+        if (!objFirstResponder) {
+            badgeElement.innerText = t('noFr')
+        } else if (objFirstResponder && !objFirstResponder.timeAttr) {
+            badgeElement.innerText = "N/A";
+            return undefined;
+        } else {
+            badgeElement.innerText = secToStr(objFirstResponder.timeAttr);
+            return objFirstResponder.timeAttr;
+        }
+    }
+
+    // Reload Funktion wenn sich Einsatz verändert
+    function handleReloadIfNeeded() {
+        if (frrSettings.general.intReloadCount > 10) {
+            console.error(errorText, "Maximale Anzahl an Reloads in dieser Sitzung überschritten. Hauptfenster muss neu geladen werden!");
+            return;
+        }
+        if (document.getElementById('mission_reload_request_' + missionNum).style.display !== "none" &&
+            frrSettings.general.fAllowReload && !fReloadActive) {
+            fReloadActive = true;
+            frrSettings.general.intReloadCount++;
+            saveStorage("badgeSetting");
+            setTimeout(() => window.location.reload(), 10000);
+        }
+    }
+
+    // Handle Funktion wenn schon ein Fahrzeug vor Ort ist
+    function handleAlreadyThere(badgeElement) {
+        setBadgeColor(badgeElement, "black", "white");
+        badgeElement.style.width = "auto";
+        badgeElement.innerText = t('alrdyThere');
+    }
+
+    // Prüfen ob FR rechtzeitig kommt
+    function checkFrStatus(frTimeSeconds, missionTimerSeconds, pumpingTimerSeconds, missionInfo, missionProgrBar) {
+        // Kein First Responder vorhanden
+        if (!objFirstResponder) {
+            return 'no_fr';
+        }
+
+        // FR kommt sicher rechtzeitig an
+        if (frTimeSeconds && (missionTimerSeconds || pumpingTimerSeconds) &&
+            (frTimeSeconds < missionTimerSeconds || frTimeSeconds < pumpingTimerSeconds)) {
+            return 'succeeds';
+        }
+
+        // Status ist unsicher, weil bestimmte Bedingungen nicht erfüllt sind oder weitere Variablen involviert sind
+        if (!(frTimeSeconds && (missionTimerSeconds || pumpingTimerSeconds)) ||
+            (missionInfo.additional.possible_patient_min > 0 && missionInfo.additional.patient_at_end_of_mission) ||
+            missionInfo.additional.min_possible_prisoners > 0 ||
+            document.querySelector('.mission_patient') ||
+            document.getElementById('h2_prisoners') ||
+            (!missionTimerSeconds && missionProgrBar > 0) ||
+            !missionInfo) {
+            return 'unknown';
+        }
+
+        // FR könnte noch rechtzeitig kommen, wenn es noch Patienten oder Gefangene gibt
+        if ((missionInfo.additional.possible_patient > 0 && missionInfo.additional.patient_at_end_of_mission) ||
+            missionInfo.additional.max_possible_prisoners > 0) {
+            return 'possible';
+        }
+
+        // Falls alle vorherigen Bedingungen nicht zutreffen, dann ist der FR wahrscheinlich zu spät
+        return 'fails';
+    }
+
     // Funktion zum Einfärben des Badges (Zeitfelt im FR Button)
     function badgeSetting(badgeElement) {
         intCycleCount++;
         if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "badgeSetting wird ausgeführt (maximal 10x mit Logging). Ausführung Nr.: ", intCycleCount);
-        if (!fStopBadgeSetting && !fAlrdyThere) {
-            const frTime = getFrTime();
-            const frTimeSeconds = parseTimeString(frTime);
-            const missionNum = window.location.pathname.replace(/\D+/g, "");
-            const missionTimerElement = document.getElementById('mission_countdown_' + missionNum);
-            const intMissionProgrBar = parseInt(document.getElementById("mission_bar_" + missionNum).style.width, 10);
-            var missionTimerSeconds = missionTimerElement ? parseTimeString(missionTimerElement.innerText) : false;
-            const missionStartTimer = missionTimerElement ? missionTimerElement.parentElement.id === "col_left" : false;
-            const pumpingTimerSeconds = document.querySelector('.pumping-countdown') ? parseTimeString(document.querySelector('.pumping-countdown').innerText) : false;
-
-            badgeElement.innerText = frTime; // FR Zeit in Badge schreiben
-            if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Mission Timer in Sekunden: ", missionTimerSeconds);
-            if (missionStartTimer && objMissionInfo.additional.duration) {
-                missionTimerSeconds += objMissionInfo.additional.duration;
-                if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Mission Timer in Sekunden (Startzeit + geplante Dauer): ", missionTimerSeconds);
-            }
-
-            if (frTime === t('noFr')) {
-                badgeElement.style.backgroundColor = "red";
-                badgeElement.style.color = "black";
-            } else if (frTimeSeconds && (missionTimerSeconds || pumpingTimerSeconds)) {
-                if (frTimeSeconds < missionTimerSeconds || // AAO Zeit kleiner als Restzeit (und keine Startzeit bei geplanten Einsätzen)
-                    frTimeSeconds < pumpingTimerSeconds) { // ODER AAO Zeit kleiner als Pumpzeit DANN grün
-                    if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Zeit ist ausreichend. Zeiten (frr|mission|pumping): ", frTimeSeconds, missionTimerSeconds, pumpingTimerSeconds);
-                    badgeElement.style.backgroundColor = "lightgreen";
-                    badgeElement.style.color = "black";
-                } else if ((objMissionInfo.additional.possible_patient_min > 0 && objMissionInfo.additional.patient_at_end_of_mission) ||
-                           objMissionInfo.additional.min_possible_prisoners > 0 ||
-                           document.querySelector('.mission_patient') ||
-                           document.getElementById('h2_prisoners') ||
-                           (!missionTimerElement && intMissionProgrBar > 0) ||
-                           !objMissionInfo) {
-                    if (fDebuggingOn && intCycleCount <= 10) {
-                        console.log(errorText + "Keine Ahnung obs reicht. Bedingungen (objMisInfo|minPat|patAtEnd|minPris|actPat|actPris|missBar): ",
-                                    objMissionInfo,
-                                    objMissionInfo.additional.possible_patient_min,
-                                    objMissionInfo.additional.patient_at_end_of_mission,
-                                    objMissionInfo.additional.min_possible_prisoners,
-                                    document.querySelector('.mission_patient'),
-                                    document.getElementById('h2_prisoners'),
-                                    intMissionProgrBar);
-                    }
-                    badgeElement.style.backgroundColor = "";
-                    badgeElement.style.color = "";
-                } else if ((objMissionInfo.additional.possible_patient > 0 && objMissionInfo.additional.patient_at_end_of_mission) ||
-                           objMissionInfo.additional.max_possible_prisoners > 0) {
-                    if (fDebuggingOn && intCycleCount <= 10) {
-                        console.log(errorText + "Es könnten noch Pateinten oder Gefangene kommen (aber nicht sicher). Bedingungen (posiblePat|patAtEnd|maxPosiblePris): ",
-                                    objMissionInfo.additional.possible_patient,
-                                    objMissionInfo.additional.patient_at_end_of_mission,
-                                    objMissionInfo.additional.max_possible_prisoners);
-                    }
-                    badgeElement.style.backgroundColor = "darkorange";
-                    badgeElement.style.color = "black";
-                } else {
-                    if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Fahrzeug kommt zu spät!");
-                    badgeElement.style.backgroundColor = "red";
-                    badgeElement.style.color = "black";
-                }
-            } else {
-                if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Es wurden keine Timer gefunden!")
-                badgeElement.style.backgroundColor = "";
-                badgeElement.style.color = "";
-            }
-
-            // Reload wenn aktiviert und notwendig
-            if (frrSettings[sLangRegion].general.intReloadCount > 10) {
-                console.error(errorText, "Maximale Anzahl an Reloads in dieser Sitzung überschritten. Hauptfenster muss neu geladen werden!");
-            } else if (document.getElementById('mission_reload_request_' + missionNum).style.display !== "none" && frrSettings[sLangRegion].general.fAllowReload && !fReloadActive) {
-                if (fLoggingOn) console.log(errorText + "Reload wurde angefordert. T-10s. Anzahl bisheriger Reloads (max. 10): ", frrSettings[sLangRegion].general.intReloadCount);
-                fReloadActive = true;
-                frrSettings[sLangRegion].general.intReloadCount++;
-                saveStorage("badgeSetting");
-                setTimeout(function() {
-                    window.location.reload();
-                }, 10000);
-            }
+        // Badge soll nicht geändert werden
+        if (fStopBadgeSetting) {
+            setTimeout(() => badgeSetting(badgeElement), 100)
+            return
         }
-
-        // Schon ein Fahrzeug vohanden? Wenn nicht wiederholung nach 100ms
+        // Es ist schon ein Fahrzeug vorhanden
         if (fAlrdyThere) {
-            badgeElement.style.backgroundColor = "black";
-            badgeElement.style.color = "white";
-            badgeElement.style.width = "auto";
-            badgeElement.innerText = sLangRegion === "de_DE" ? "Du bist schon dort!" : "You are already there!";
-            if (fLoggingOn) console.log(errorText + "Es ist schon ein Fahrzeug vom User da! fAlrdyThere: ", fAlrdyThere);
+            handleAlreadyThere(badgeElement)
+            setTimeout(() => badgeSetting(badgeElement), 100)
+            return
         }
+
+        const { missionTimerElement, intMissionProgrBar, pumpingCountdown } = getDynamicElements();
+
+        const frTimeSeconds = setBadgeText(badgeElement);
+        let missionTimerSeconds = missionTimerElement ? parseTimeString(missionTimerElement.innerText) : false;
+        const pumpingTimerSeconds = pumpingCountdown ? parseTimeString(pumpingCountdown.innerText) : false;
+
+        if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Mission Timer in Sekunden: ", missionTimerSeconds);
+
+        // Mission Timer Anpassung
+        if (missionTimerSeconds && missionTimerElement.parentElement.id === "col_left" && objMissionInfo.additional.duration) {
+            missionTimerSeconds += objMissionInfo.additional.duration;
+            if (fDebuggingOn && intCycleCount <= 10) console.log(errorText + "Mission Timer in Sekunden (Startzeit + geplante Dauer): ", missionTimerSeconds);
+        }
+
+        // Status des FR prüfen
+        const frStatus = checkFrStatus(frTimeSeconds, missionTimerSeconds, pumpingTimerSeconds, objMissionInfo, intMissionProgrBar);
+
+        // Status auswerten und Badge entsprechend anpassen
+        switch (frStatus) {
+            case 'no_fr':
+                setBadgeColor(badgeElement, "red", "black");
+                break;
+            case 'succeeds':
+                setBadgeColor(badgeElement, "lightgreen", "black");
+                break;
+            case 'possible':
+                setBadgeColor(badgeElement, "darkorange", "black");
+                break;
+            case 'unknown':
+                setBadgeColor(badgeElement, "", "");
+                break;
+            case 'fails':
+                setBadgeColor(badgeElement, "red", "black");
+                break;
+        }
+
+        // Reload wenn aktiviert und notwendig
+        handleReloadIfNeeded()
+
         // Wiederholung alle 100 ms
-        setTimeout(function() {
-            badgeSetting(badgeElement);
-        }, 100);
+        setTimeout(() => badgeSetting(badgeElement), 100)
     }
 
     // Abholen der Missionsinformationen aus der JSON Datei und suchen des übergebenen Einsatzes
@@ -660,12 +746,18 @@
 
     // Übersetzungs Funktion
     function t(key) {
-        //const sLang = 'en'; // Zum Testen kann Sprache auf Englisch gestellt werden. ################################################################################################LÖSCHEN VOR RELEASE####################################
         return objTranslations[sLang]?.[key] || objTranslations.en[key] || 'No translation found!';
     }
 
+    // Internationale Keys, Types oder IDs
     function internationalType(key) {
         return objInternationalIds[sRegion]?.[key]
+    }
+
+    // Logging Variablen setzen
+    function setLogging() {
+        fLoggingOn = frrSettings.general.loggingLevel === "complete" || false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
+        fDebuggingOn = frrSettings.general.loggingLevel === "debug" || fLoggingOn;
     }
 
     // ###############
@@ -687,8 +779,12 @@
     var timerKeyDown = null;
     var iKeyDownTime = 0;
     var objFirstResponder;
-    let observer; // Observer für Änderungserkennung der Fahrzeugliste
+    var missionNum;
+    var fLoggingOn;
+    var fDebuggingOn;
     let targetNode; // Fahrzeugliste (Zum Stoppen des Eventlisteners global angelegt)
+    const observer = new MutationObserver((mutationsList) => updateFirstResponder('update')); // Observer für Änderungserkennung der Fahrzeugliste
+    const observerConfig = { childList: true, attributes: true, subtree: true };
     const sLangRegion = I18n.locale; // Sprache und Region
     const sLang = (sLangRegion).split('_')[0]; // Nur Sprache
     const sRegion = (sLangRegion).split('_')[1]; // Nur Region
@@ -698,81 +794,94 @@
 
     // Definition des Sprachobjekts
     const objTranslations = {
-        en : {
-            settings : 'Settings',
-            generalSettings : 'General settings',
-            useAao : 'Use without ARR (change causes reload)',
-            alertAndNext : 'Alert and next after selection (alliance mission)',
-            alertShareNext : 'Alert, share and next after selection (own mission)',
-            reloadOnChange : 'Reload upon mission changes',
-            debugging : 'Level of debugging informations',
-            delay : 'Enter alarm delay (0-10s)',
-            setHotkey : 'Enter hot key (letters only, no A,D,E,N,S,W or X)',
-            vehicleTypes : 'vehicle-types (multiple-choice with Strg + click)',
-            ownVehicleTypes : 'Custom Vehicletypes (multiple-choice with Strg + click)',
-            dispatchCenters : 'dispatchcenter (multiple-choice with Strg + click)',
-            useDispatch : 'only use vehicles of specific dispatchcenter',
-            counter : 'Counter',
-            save : 'Save',
-            close : 'Close',
-            useStation : 'Use this building ID for First Responder',
-            useThisAao : 'Use this ID for FirstResponder.',
-            attention : 'Attention',
-            useThisWarn : 'Selection causes reload! All vehicle selections will be deleted! The FRR ARR cannot be used as First Responder 2Go!',
-            loadFr2Go : 'Load FR 2Go Config',
-            really2Go : 'Do you really want to load the First Responder 2Go config? All ARR settings will be lost!',
-            dontForget : 'Don\'t forget!',
-            descr2Go : 'The First Responder 2Go configuration only consists of the standard vehicle types. It is not possible to transfer your custom vehicle categories! After the configuration has been inserted, the ARR needs to be saved!',
-            wait : 'wait',
-            settingsSaved : 'Settings successfully saved.',
-            noFr : 'no FR found',
-            noPrefix : 'Z/no Prefix found - ',
-            loadData : 'Loading Data. Please wait!'
+        en: {
+            alertAndNext: 'Alert and next after selection (alliance mission)',
+            alertShareNext: 'Alert, share and next after selection (own mission)',
+            alrdyThere: 'You are already there!',
+            attention: 'Attention',
+            close: 'Close',
+            complete: 'Complete',
+            counter: 'Counter',
+            debug: 'Debug',
+            debugging: 'Level of debugging informations',
+            delay: 'Enter alarm delay (0-10s)',
+            descr2Go: 'The First Responder 2Go configuration only consists of the standard vehicle types. It is not possible to transfer your custom vehicle categories! After the configuration has been inserted, the ARR needs to be saved!',
+            dispatchCenters: 'Dispatchcenter (multiple-choice with Strg + click)',
+            dontForget: "Don't forget!",
+            error: 'Error',
+            generalSettings: 'General settings',
+            loadData: 'Loading Data. Please wait!',
+            loadFr2Go: 'Load FR 2Go Config',
+            noFr: 'no FR found',
+            noPrefix: 'Z/no Prefix found - ',
+            ownVehicleTypes: 'Custom Vehicletypes (multiple-choice with Strg + click)',
+            really2Go: 'Do you really want to load the First Responder 2Go config? All ARR settings will be lost!',
+            reloadOnChange: 'Reload upon mission changes',
+            save: 'Save',
+            setHotkey: 'Enter hot key (letters only, no A,D,E,N,S,W or X)',
+            settings: 'Settings',
+            settingsSaved: 'Settings successfully saved.',
+            useAao: 'Use without ARR (change causes reload)',
+            useDispatch: 'only use vehicles of specific dispatchcenter',
+            useStation: 'Use this building ID for First Responder',
+            useThisAao: 'Use this ID for FirstResponder.',
+            useThisWarn: 'Selection causes reload! All vehicle selections will be deleted! The FRR ARR cannot be used as First Responder 2Go!',
+            vehicleTypes: 'Vehicle-types (multiple-choice with Strg + click)',
+            version: 'Version',
+            wait: 'wait'
         },
-        de : {
-            settings : 'Einstellungen',
-            generalSettings : 'Allgemeine Einstellungen',
-            useAao : 'Nutzung ohne AAO (ACHTUNG: Änderung verursacht Reload der Seite!)',
-            alertAndNext : 'Nach Auswahl alarmieren und nächter Einsatz (Verbandseinsatz)',
-            alertShareNext : 'Nach Auswahl alarmieren, teilen und nächster Einsatz (Eigener Einsatz)',
-            reloadOnChange : 'Reload bei Änderungen im Einsatz',
-            debugging : 'Level der debugging Informationen',
-            delay : 'Eingabe Verzögerungszeit (0-10s)',
-            setHotkey : 'Eingabe HotKey (nur Buchstaben, kein A,D,E,N,S,W oder X)',
-            vehicleTypes : 'Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)',
-            ownVehicleTypes : 'Eigene Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)',
-            dispatchCenters : 'Leitstellen (Mehrfachauswahl mit Strg + Klick)',
-            useDispatch : 'nur Fahrzeuge bestimmter Leitstellen wählen',
-            counter : 'Zähler',
-            save : 'Speichern',
-            close : 'Schließen',
-            useStation : 'Wachen-ID im First Responder berücksichtigen',
-            useThisAao : 'Diese ID für den First Responder nutzen.',
-            attention : 'Achtung',
-            useThisWarn : 'Auswahl verursacht Reload! Alle Fahrzeugauswahlen werden gelöscht! Die FRR AAO kann nicht als First Responder 2Go genutzt werden!',
-            loadFr2Go : 'Lade FR 2Go Konfig',
-            really2Go : 'Möchten sie wirklich die First Responder 2Go Konfig laden? Alle AAO Einstellungen gehen verloren!',
-            dontForget : 'Nicht vergessen!',
-            descr2Go : 'Die First Responder 2Go Konfiguration besteht nur aus den Standard-Fahrzeugtypen. Die Übernahme der eigenen Fahrzeugkategorien ist nicht möglich! Nachdem die Konfiguration eingefügt wurde, muss die AAO noch gespeichert werden!',
-            wait : 'warte',
-            settingsSaved : 'Die Einstellungen wurden erfolgreich gespeichert.',
-            noFr : 'kein FR gefunden',
-            noPrefix : 'Z/kein Prefix gefunden -',
-            loadData : 'Daten werden geladen. Bitte Warten!'
+        de: {
+            alertAndNext: 'Nach Auswahl alarmieren und nächter Einsatz (Verbandseinsatz)',
+            alertShareNext: 'Nach Auswahl alarmieren, teilen und nächster Einsatz (Eigener Einsatz)',
+            alrdyThere: 'Du bist schon dort!',
+            attention: 'Achtung',
+            close: 'Schließen',
+            complete: 'Komplett',
+            counter: 'Zähler',
+            debug: 'Debug',
+            debugging: 'Level der debugging Informationen',
+            delay: 'Eingabe Verzögerungszeit (0-10s)',
+            descr2Go: 'Die First Responder 2Go Konfiguration besteht nur aus den Standard-Fahrzeugtypen. Die Übernahme der eigenen Fahrzeugkategorien ist nicht möglich! Nachdem die Konfiguration eingefügt wurde, muss die AAO noch gespeichert werden!',
+            dispatchCenters: 'Leitstellen (Mehrfachauswahl mit Strg + Klick)',
+            dontForget: 'Nicht vergessen!',
+            error: 'Error',
+            generalSettings: 'Allgemeine Einstellungen',
+            loadData: 'Daten werden geladen. Bitte Warten!',
+            loadFr2Go: 'Lade FR 2Go Konfig',
+            noFr: 'kein FR gefunden',
+            noPrefix: 'Z/kein Prefix gefunden -',
+            ownVehicleTypes: 'Eigene Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)',
+            really2Go: 'Möchten sie wirklich die First Responder 2Go Konfig laden? Alle AAO Einstellungen gehen verloren!',
+            reloadOnChange: 'Reload bei Änderungen im Einsatz',
+            save: 'Speichern',
+            setHotkey: 'Eingabe HotKey (nur Buchstaben, kein A,D,E,N,S,W oder X)',
+            settings: 'Einstellungen',
+            settingsSaved: 'Die Einstellungen wurden erfolgreich gespeichert.',
+            useAao: 'Nutzung ohne AAO (ACHTUNG: Änderung verursacht Reload der Seite!)',
+            useDispatch: 'nur Fahrzeuge bestimmter Leitstellen wählen',
+            useStation: 'Wachen-ID im First Responder berücksichtigen',
+            useThisAao: 'Diese ID für den First Responder nutzen.',
+            useThisWarn: 'Auswahl verursacht Reload! Alle Fahrzeugauswahlen werden gelöscht! Die FRR AAO kann nicht als First Responder 2Go genutzt werden!',
+            vehicleTypes: 'Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)',
+            version: 'Version',
+            wait: 'warte'
         }
-    }
+    };
 
     // Definition internationale IDs
     const objInternationalIds = {
-        US : {
-            dispatchType : 1
-        },
-        DE : {
-            dispatchType : 7
-        },
-        GB : {
-            dispatchType : 7
-        }
+        US : { dispatchType : 1 },
+        DE : { dispatchType : 7 },
+        GB : { dispatchType : 7 },
+        CZ : { dispatchType : 7 },
+        AU : { dispatchType : 7 },
+        ES : { dispatchType : 7 },
+        FR : { dispatchType : 7 },
+        IT : { dispatchType : 7 },
+        NO : { dispatchType : 7 },
+        NL : { dispatchType : 1 },
+        PL : { dispatchType : 7 },
+        SE : { dispatchType : 7 }
     }
 
     // Definition internationale Prefix
@@ -812,15 +921,13 @@
         frrSettings = createSettingsObject()
         saveStorage();
         console.log(errorText, "Neues Settings Objekt angelegt");
-    } else if (!frrSettings[sLangRegion]) {
-        frrSettings[sLangRegion] = createSettingsObject()[sLangRegion];
-        saveStorage();
-        console.log(errorText, "Neue Sprache im Settings Objekt angelegt");
     }
 
-    // Definition Variablen mit Abhängigkeit zum local Storage
-    var fLoggingOn = frrSettings[sLangRegion].general.loggingLevel === "complete" || false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
-    var fDebuggingOn = frrSettings[sLangRegion].general.loggingLevel === "debug" || fLoggingOn;
+    // Versionierung prüfen
+    if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
+
+    // Logging Variablen setzen
+    setLogging();
 
     // Beispiel für neues Logging
     if (false) {
@@ -829,17 +936,14 @@
         console.error(errorText + "Hier könnte ihr Error stehen", scriptVersion);
     }
 
-    // Versionierung prüfen
-    if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
-
     // Reload Counter zurücksetzen und AAO Check
     if (window.location.pathname === "/") {
         // Prüfen ob AAO noch existiert
-        if (frrSettings[sLangRegion].aaoId !== "00000000") {
-            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings[sLangRegion].aaoId}`);
+        if (frrSettings.aaoId !== "00000000") {
+            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings.aaoId}`);
             if (!aaoResponse.ok) {
                 if (fLoggingOn) console.log(errorText + "AAO in Schnittstelle nicht vorhanden", aaoResponse);
-                frrSettings[sLangRegion].aaoId = "00000000";
+                frrSettings.aaoId = "00000000";
                 saveStorage("AAO Check Hauptseite");
                 setTimeout(function() {
                     window.parent.location.reload();
@@ -847,31 +951,32 @@
             }
         }
         // Reload Counter zurücksetzen
-        frrSettings[sLangRegion].general.intReloadCount = 0;
+        frrSettings.general.intReloadCount = 0;
         saveStorage("Initialisierung auf Hauptseite");
     }
 
-    // Missions Id und "Schon da" abrufen wenn Einsatzfenster
+    // Infos bei Missionsfenster abrufen
     if (window.location.pathname.includes("missions")) {
         const currMissionId = getMissionId();
-        objMissionInfo = await getMissionInfo(currMissionId);
-        fAlrdyThere = !!document.querySelector(".glyphicon-user");
+        objMissionInfo = await getMissionInfo(currMissionId); //Missionsinfos aus API
+        fAlrdyThere = !!document.querySelector(".glyphicon-user"); // Wenn User Icon eingeblendet wird ist schon ein fahrzeug da
+        missionNum = window.location.pathname.replace(/\D+/g, ""); // Nummer der Mission
     }
 
     // Reload wenn AAO ID geändert wurde und Check der AAO ID
     if (sPathname === "/aaos") {
         // Prüfen ob AAO noch existiert
-        if (frrSettings[sLangRegion].aaoId !== "00000000") {
-            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings[sLangRegion].aaoId}`);
+        if (frrSettings.aaoId !== "00000000") {
+            const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings.aaoId}`);
             if (!aaoResponse.ok) {
                 if (fLoggingOn) console.log(errorText + "AAO in Schnittstelle nicht vorhanden", aaoResponse);
-                frrSettings[sLangRegion].aaoId = "00000000";
-                frrSettings[sLangRegion].general.fAaoIdModified = true;
+                frrSettings.aaoId = "00000000";
+                frrSettings.general.fAaoIdModified = true;
             }
         }
         // Reload Durchführen falls erforderlich
-        if (frrSettings[sLangRegion].general.fAaoIdModified) {
-            frrSettings[sLangRegion].general.fAaoIdModified = false;
+        if (frrSettings.general.fAaoIdModified) {
+            frrSettings.general.fAaoIdModified = false;
             saveStorage("AAO Reload und Check");
             setTimeout(function() {
                 window.parent.location.reload();
@@ -880,7 +985,7 @@
     }
 
     // Täglicher Abruf der eigenen Fahrzeugtypen
-    if (frrSettings[sLangRegion].customVehicleTypes.lastUpdate < (now - 24 * 60 * 60 * 1000)) {
+    if (frrSettings.customVehicleTypes.lastUpdate < (now - 24 * 60 * 60 * 1000)) {
         await fetchCustomVehicles();
     }
 
@@ -902,48 +1007,18 @@
      </div>
     `;
 
-    // ###########################################################
-    // Abfrage des First Responders wenn sich die Fahrzeuge ändern
-    // ###########################################################
+    // ###########################################################################################
+    // Abfrage des First Responders wenn sich die Fahrzeuge ändern oder Checkboxen geklickt werden
+    // ###########################################################################################
 
     if (window.location.pathname.includes("missions") && // Aufruf in einem Einsatzfenster
         !document.querySelector('.mission-success')) {
         targetNode = document.getElementById('vehicle_list_step');
-        objFirstResponder = getFirstResponder();
-
-        // Erstelle einen MutationObserver
-        observer = new MutationObserver((mutationsList) => {
-            // Observer abschalten um Endlosschleife zu vermeiden
-            observer.disconnect();
-
-            objFirstResponder = getFirstResponder();
-
-            // Observer wieder aktivieren
-            observer.observe(targetNode, config);
-        });
-
-        // Observer-Optionen
-        const config = {
-            childList: true, // Überwacht Hinzufügen/Entfernen von Kindern
-            attributes: true, // Überwacht Änderungen an den Attributen
-            subtree: true // Überwacht auch untergeordnete Knoten
-        };
-
+        getFirstResponder();
         // Starte den Observer
-        observer.observe(targetNode, config);
-
+        observer.observe(targetNode, observerConfig);
         // Event-Listener für Checkboxen im TargetNode
-        targetNode.addEventListener('change', (event) => { // ##############################################Muss eigene Funktion sein, damit der Eventlistener beim ausführen der alarmierung entfernt werden kann! Siehe ChatGPT##############################
-            if (event.target.type === 'checkbox') {
-                // Observer abschalten um Endlosschleife zu vermeiden
-                observer.disconnect();
-
-                objFirstResponder = getFirstResponder();
-
-                // Observer wieder aktivieren
-                observer.observe(targetNode, config);
-            }
-        });
+        targetNode.addEventListener('change', updateFirstResponder);
     }
 
     // ########################################################
@@ -956,11 +1031,11 @@
         const elSaveButton = document.getElementById('save-button');
         var elTabContentDiv = document.querySelector('.tab-content')
         // Checkbox für FRR hinzufügen
-        if (!frrSettings[sLangRegion].general.fWoAao) {
+        if (!frrSettings.general.fWoAao) {
             $(".boolean.optional.checkbox")
                 .first()
                 .before(`<label class="form-check-label" for="frSaveAaoId">
-                             <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frrSettings[sLangRegion].aaoId) ? "checked" : "" }>
+                             <input class="form-check-input" type="checkbox" id="frSaveAaoId" ${ window.location.pathname.includes(frrSettings.aaoId) ? "checked" : "" }>
                              ${ t('useThisAao') }
                          </label>
                          <p class="help-block"><b>${ t('attention') }:</b> ${ t('useThisWarn') }</p>`);
@@ -968,9 +1043,9 @@
             // Auswertung, dass die Checkbox beim AAO Bearbeiten angeklickt wurde. Bei Abwahl löscht es die AAO ID. Bei Anwahl wird die aktuelle AAO ID aus der URL extrahiert und gespeichert.
             $("body").on("click", "#frSaveAaoId", function() {
                 if ($("#frSaveAaoId")[0].checked) {
-                    frrSettings[sLangRegion].aaoId = sAaoId;
+                    frrSettings.aaoId = sAaoId;
                 } else {
-                    frrSettings[sLangRegion].aaoId = "00000000";
+                    frrSettings.aaoId = "00000000";
                 }
                 // Alle ausgewählten Fahrzeuge löschen
                 elTabContentDiv.querySelectorAll('input').forEach(function(input) {
@@ -978,7 +1053,7 @@
                     input.setAttribute('value', '0');
                 });
                 // Reload anstoßen wenn gespeichert wurde
-                frrSettings[sLangRegion].general.fAaoIdModified = true;
+                frrSettings.general.fAaoIdModified = true;
                 saveStorage("AAO festlegen");
 
                 // Speicherm
@@ -986,7 +1061,7 @@
             });
         }
         // FR 2Go Konfiguration setzen
-        if (sAaoId !== frrSettings[sLangRegion].aaoId) {
+        if (sAaoId !== frrSettings.aaoId) {
             // Hinzufügen eines Buttons
             var btnFrToGo = document.createElement('a');
             btnFrToGo.setAttribute('href', '#');
@@ -1016,15 +1091,15 @@
                             </li>
                         `);
 
-                    // Config String erstellen
-                    const sConfigIds = frrSettings[sLangRegion].vehicleTypes.settings.join(', ');
+                        // Config String erstellen
+                        const sConfigIds = frrSettings.vehicleTypes.settings.join(', ');
 
-                    // Neues FR 2Go Input Element erstellen
-                    var elFrGoDiv = document.createElement('div');
-                    elFrGoDiv.setAttribute('role', 'tabpanel');
-                    elFrGoDiv.className = 'tab-pane active';
-                    elFrGoDiv.id = 'frgo_config';
-                    elFrGoDiv.innerHTML = `
+                        // Neues FR 2Go Input Element erstellen
+                        var elFrGoDiv = document.createElement('div');
+                        elFrGoDiv.setAttribute('role', 'tabpanel');
+                        elFrGoDiv.className = 'tab-pane active';
+                        elFrGoDiv.id = 'frgo_config';
+                        elFrGoDiv.innerHTML = `
                             <div class="form-group fake_number optional aao_frgo">
                                 <div class="col-sm-3 control-label">
                                     <label class="fake_number optional " for="aao_frgo">First Responder 2Go</label>
@@ -1036,23 +1111,23 @@
                             </div>
                         `;
 
-                    // frr Tab Inhalt in tab-Content einfügen und alle anderen inputs auf 0 setzen
-                    elTabContentDiv.querySelectorAll('input').forEach(function(input) {
-                        input.value = '0';
-                        input.setAttribute('value', '0');
-                    });
-                    elTabContentDiv.querySelectorAll('.tab-pane').forEach(function(tabPane) {
-                        tabPane.classList.remove('active');
-                    });
-                    elTabContentDiv.appendChild(elFrGoDiv);
-                    setTimeout(function() {
-                        elTabContentDiv.scrollIntoView({ behavior: 'smooth' });
-                        btnFrToGo.innerHTML = `<span aria-hidden="true"><-- ${ t('dontForget') }</span>`;
-                    },20);
+                        // frr Tab Inhalt in tab-Content einfügen und alle anderen inputs auf 0 setzen
+                        elTabContentDiv.querySelectorAll('input').forEach(function(input) {
+                            input.value = '0';
+                            input.setAttribute('value', '0');
+                        });
+                        elTabContentDiv.querySelectorAll('.tab-pane').forEach(function(tabPane) {
+                            tabPane.classList.remove('active');
+                        });
+                        elTabContentDiv.appendChild(elFrGoDiv);
+                        setTimeout(function() {
+                            elTabContentDiv.scrollIntoView({ behavior: 'smooth' });
+                            btnFrToGo.innerHTML = `<span aria-hidden="true"><-- ${ t('dontForget') }</span>`;
+                        },20);
+                    }
                 }
-            }
-        });
-    }
+            });
+        }
     }
 
     // ##############################################
@@ -1061,7 +1136,7 @@
 
     // Button im Menü wenn AAO nich genutzt wird oder keine EIngestellt ist
     if (window.location.pathname === "/" &&
-        (frrSettings[sLangRegion].general.fWoAao || frrSettings[sLangRegion].aaoId === "00000000")) {
+        (frrSettings.general.fWoAao || frrSettings.aaoId === "00000000")) {
         $('#navbar-main-collapse > ul').append(`<li class="btn btn-s" style="padding: 0px; border: 0px">
                                                     <a href="#" id="frrOpenModal" data-toggle="modal" data-target="#frModal">
                                                         <span style="margin-right: 2px;" class="glyphicon glyphicon-cog"></span>
@@ -1079,8 +1154,8 @@
 
     if (window.location.pathname.includes("missions") && // Aufruf in einem Einsatzfenster
         !document.querySelector('.mission-success') && // Einsatz ist noch nicht beendet
-        !frrSettings[sLangRegion].general.fWoAao && frrSettings[sLangRegion].aaoId !== "00000000") { // Es soll AAO verwendet werden UND die eingestellte AAO ist nicht 00000000
-        $("#available_aao_" + frrSettings[sLangRegion].aaoId)
+        !frrSettings.general.fWoAao && frrSettings.aaoId !== "00000000") { // Es soll AAO verwendet werden UND die eingestellte AAO ist nicht 00000000
+        $("#available_aao_" + frrSettings.aaoId)
             .parent()
             .after(`<button type="button" class="btn btn-success btn-xs" data-toggle="modal" data-target="#frModal" style="height:24px" id="frrOpenModal">
                         <div class="glyphicon glyphicon-cog" style="color:LightSteelBlue"></div>
@@ -1091,13 +1166,13 @@
         fMenuButtonAdded = true; // Eventlistener für Menübuttons können aktiviert werden
 
         // Badge mit Zeit befüllen und einfärben
-        const badgeElementAao = document.getElementById("aao_timer_" + frrSettings[sLangRegion].aaoId);
+        const badgeElementAao = document.getElementById("aao_timer_" + frrSettings.aaoId);
         setTimeout(function() {
             badgeSetting(badgeElementAao);
         }, 50);
 
         //Eventlistener für AAO
-        $("#aao_" + frrSettings[sLangRegion].aaoId).click(function() {
+        $("#aao_" + frrSettings.aaoId).click(function() {
             frrAlert();
         });
 
@@ -1112,7 +1187,7 @@
     // Alarmbutton wenn keine AAO genutzt wird
     if (window.location.pathname.includes("missions") && // Aufruf in einem Einsatzfenster
         !document.querySelector('.mission-success') && // Einsatz ist noch nicht beendet
-        (frrSettings[sLangRegion].general.fWoAao || frrSettings[sLangRegion].aaoId === "00000000")) { // Es soll kein AAO verwendet werden ODER die eingestellte AAO ist 00000000
+        (frrSettings.general.fWoAao || frrSettings.aaoId === "00000000")) { // Es soll kein AAO verwendet werden ODER die eingestellte AAO ist 00000000
         $('.flex-row.flex-nowrap:not(.navbar-right, .hidden-xs)')
             .last()
             .after(`<div class="flex-row flex-nowrap">
@@ -1154,25 +1229,25 @@
         $("body").on("click", "#frSavePreferences", function() {
             // Auswerten ob ein Reload durchgeführt und ob die AAO ID auf 0 gesetzt werden muss.
             var fReload = false;
-            if (frrSettings[sLangRegion].general.fWoAao !== $("#frrWoAao")[0].checked) {
+            if (frrSettings.general.fWoAao !== $("#frrWoAao")[0].checked) {
                 fReload = true;
                 if ($("#frrWoAao")[0].checked) {
-                    frrSettings[sLangRegion].aaoId = "00000000";
+                    frrSettings.aaoId = "00000000";
                 }
             }
 
             // Speichern der Daten aus dem Modal in die entsprechenden Variablen
-            frrSettings[sLangRegion].general.fWoAao = $("#frrWoAao")[0].checked;
-            frrSettings[sLangRegion].general.fAutoAlert = $("#frrAutoAlert")[0].checked;
-            frrSettings[sLangRegion].general.fAutoShare = $("#frrAutoShare")[0].checked;
-            frrSettings[sLangRegion].general.fAllowReload = $("#frrAllowReload")[0].checked;
-            frrSettings[sLangRegion].general.loggingLevel = document.getElementById("frrDebugging").value
-            frrSettings[sLangRegion].general.alarmDelay = parseInt($("#frrAlarmDelay").val());
-            frrSettings[sLangRegion].general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
-            frrSettings[sLangRegion].vehicleTypes.settings = $("#frSelectVehicles").val() ? mapping(frrSettings[sLangRegion].vehicleTypes.data, $("#frSelectVehicles").val(), "id") : [];
-            frrSettings[sLangRegion].customVehicleTypes.settings = $("#frSelectCustomVehicles").val() ? $("#frSelectCustomVehicles").val() : [];
-            frrSettings[sLangRegion].general.fUseDispatch = $("#frCbxUseLst")[0].checked;
-            frrSettings[sLangRegion].allowedBuildingIds = $("#frSelectDispatch").val() ? mapping(aUserBuildings, $("#frSelectDispatch").val(), "id") : [];
+            frrSettings.general.fWoAao = $("#frrWoAao")[0].checked;
+            frrSettings.general.fAutoAlert = $("#frrAutoAlert")[0].checked;
+            frrSettings.general.fAutoShare = $("#frrAutoShare")[0].checked;
+            frrSettings.general.fAllowReload = $("#frrAllowReload")[0].checked;
+            frrSettings.general.loggingLevel = document.getElementById("frrDebugging").value
+            frrSettings.general.alarmDelay = parseInt($("#frrAlarmDelay").val());
+            frrSettings.general.jsKeyCode = $("#frrKeyCodeInput").val().toUpperCase().charCodeAt(0);
+            frrSettings.vehicleTypes.settings = $("#frSelectVehicles").val() ? mapping(frrSettings.vehicleTypes.data, $("#frSelectVehicles").val(), "id") : [];
+            frrSettings.customVehicleTypes.settings = $("#frSelectCustomVehicles").val() ? $("#frSelectCustomVehicles").val() : [];
+            frrSettings.general.fUseDispatch = $("#frCbxUseLst")[0].checked;
+            frrSettings.allowedBuildingIds = $("#frSelectDispatch").val() ? mapping(aUserBuildings, $("#frSelectDispatch").val(), "id") : [];
 
             // Aktualisieren des local Storage nach übernahme der Daten
             saveStorage("Save Button");
@@ -1215,7 +1290,7 @@
     if (window.location.pathname.includes("buildings") && window.location.pathname.includes("edit")) {
         $(".building_leitstelle_building_id")
             .after(`<div class="form-check">
-                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), frrSettings[sLangRegion].addBuildingIds) > -1 ? "checked" : "" }>
+                      <input type="checkbox" class="form-check-input" id="frCbxBuildingId" ${ $.inArray(+window.location.pathname.replace(/\D+/g, ""), frrSettings.addBuildingIds) > -1 ? "checked" : "" }>
                       <label class="form-check-label" for="frCbxBuildingId">${ t('useStation') }</label>
                     </div>
                     `);
@@ -1224,11 +1299,11 @@
         $("body").on("click", "#frCbxBuildingId", function() {
             var buildingId = +window.location.pathname.replace(/\D+/g, "")
             if ($("#frCbxBuildingId")[0].checked) {
-                frrSettings[sLangRegion].addBuildingIds.push(buildingId);
+                frrSettings.addBuildingIds.push(buildingId);
             } else {
-                frrSettings[sLangRegion].addBuildingIds.splice(frrSettings[sLangRegion].addBuildingIds.indexOf(buildingId), 1);
-                if (frrSettings[sLangRegion].allowedBuildingIds.includes(buildingId)) {
-                    frrSettings[sLangRegion].allowedBuildingIds.splice(frrSettings[sLangRegion].allowedBuildingIds.indexof(buildingId), 1);
+                frrSettings.addBuildingIds.splice(frrSettings.addBuildingIds.indexOf(buildingId), 1);
+                if (frrSettings.allowedBuildingIds.includes(buildingId)) {
+                    frrSettings.allowedBuildingIds.splice(frrSettings.allowedBuildingIds.indexof(buildingId), 1);
                 }
             }
             saveStorage("Gebäudebearbeitung");
@@ -1242,14 +1317,13 @@
     // Event keyup zur Auswertung von Eingaben und zwecks HotKey überwachen
     $(document).keyup(function(evt) {
         if (!$("input:text").is(":focus") && // kein Textfeld angewählt
-            evt.keyCode === frrSettings[sLangRegion].general.jsKeyCode && // Die richtige Taste wurde gedrückt
+            evt.keyCode === frrSettings.general.jsKeyCode && // Die richtige Taste wurde gedrückt
             window.location.pathname.includes("missions") && // Aufruf in einem Einsatzfenster
             !document.querySelector('.mission-success')) { // Einsatz ist noch nicht beendet
             // HotKey wurde <5s gedrückt
             const iKeyDownDuration = Date.now() - iKeyDownTime;
             if (iKeyDownDuration < (5 * 1000)) {
                 clearTimeout(timerKeyDown);
-                observer.disconnect();
                 frrAlert();
             }
             iKeyDownTime = 0;
@@ -1268,13 +1342,14 @@
     $(document).keydown(function(evt) {
         // Starten des Keydown Timers um nochmal alarmieren zu können wenn schon ein Fahrzeug "alarmiert" wurde (z.B. durch Personalfehler)
         if (!$("input:text").is(":focus") && // kein Textfeld angewählt
-            evt.keyCode === frrSettings[sLangRegion].general.jsKeyCode && // Die richtige Taste wurde gedrückt
+            evt.keyCode === frrSettings.general.jsKeyCode && // Die richtige Taste wurde gedrückt
             window.location.pathname.includes("missions") && // Aufruf in einem Einsatzfenster
             !document.querySelector('.mission-success')) { // Einsatz ist noch nicht beendet
             if (iKeyDownTime === 0) {
                 iKeyDownTime = Date.now()
                 timerKeyDown = setTimeout(function() {
                     fAlrdyThere = false;
+                    fStopBadgeSetting = false;
                 }, 5 * 1000);
             }
         }
@@ -1288,6 +1363,4 @@
             console.error(errorText + "Taste ist als HotKey nicht erlaubt! CharCode: " + evt.keyCode); // Protokolliert, dass die Taste nicht erlaubt ist.
         }
     });
-    const testTimeEnd = new Date().getTime();
-    console.log('Ausführungszeit in ms: ', testTimeEnd - testTime);
 })();
