@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.1.1
+// @version      3.1.2
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -80,10 +80,10 @@
             // firstResponder aus den alten Daten holen und anschließend löschen
             if (localStorage.getItem("firstResponder")) {
                 const oldData = JSON.parse(localStorage.getItem('firstResponder'));
-                if (frrSettings.vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
+                if (frrSettings.vehicleTypes && frrSettings.vehicleTypes.settings && frrSettings.vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
                     frrSettings.vehicleTypes.settings = oldData.vehicleTypes[sLangRegion];
                 }
-                if (frrSettings.aaoId === "00000000" && oldData.aaoId[sLangRegion]) {
+                if (frrSettings.aaoId === "00000000" && oldData.aaiID && oldData.aaoId[sLangRegion]) {
                     frrSettings.aaoId = oldData.aaoId[sLangRegion];
                     frrSettings.general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
                 }
@@ -94,11 +94,11 @@
             if (localStorage.getItem("fr_dispatchSetup")) {
                 const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
                 // Dispatch IDs holen
-                if (frrSettings.allowedBuildingIds.length === 0) {
+                if (frrSettings.allowedBuildingIds.length === 0 && oldData.dispatchId) {
                     frrSettings.allowedBuildingIds = oldData.dispatchId;
                 }
                 // Additional buildings holen
-                if (frrSettings.addBuildingIds.length === 0) {
+                if (frrSettings.addBuildingIds.length === 0 && oldData.additionalBuildings) {
                     frrSettings.addBuildingIds = oldData.additionalBuildings;
                 }
                 // UseIt holen
@@ -141,7 +141,7 @@
             frrSettings.scriptVersion = '3.1.0';
         }
         // Versionssprung auf aktuelle Version
-        if (['3.1.0'].includes(frrSettings.scriptVersion)) {
+        if (['3.1.0', '3.1.1'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
         // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
@@ -532,7 +532,7 @@
     function getDynamicElements() {
         return {
             missionTimerElement: document.getElementById('mission_countdown_' + missionNum),
-            missionProgrBar: parseInt(document.getElementById("mission_bar_" + missionNum).style.width, 10),
+            intMissionProgrBar: parseInt(document.getElementById("mission_bar_" + missionNum).style.width, 10),
             pumpingCountdown: document.querySelector('.pumping-countdown')
         };
     }
@@ -810,7 +810,8 @@
             dontForget: "Don't forget!",
             error: 'Error',
             generalSettings: 'General settings',
-            loadData: 'Loading Data. Please wait!',
+            load: 'load',
+            loadData: 'Loading data. Please wait!',
             loadFr2Go: 'Load FR 2Go Config',
             noFr: 'no FR found',
             noPrefix: 'Z/no Prefix found - ',
@@ -828,7 +829,6 @@
             useThisWarn: 'Selection causes reload! All vehicle selections will be deleted! The FRR ARR cannot be used as First Responder 2Go!',
             vehicleTypes: 'Vehicle-types (multiple-choice with Strg + click)',
             version: 'Version',
-            wait: 'wait'
         },
         de: {
             alertAndNext: 'Nach Auswahl alarmieren und nächter Einsatz (Verbandseinsatz)',
@@ -846,7 +846,8 @@
             dontForget: 'Nicht vergessen!',
             error: 'Error',
             generalSettings: 'Allgemeine Einstellungen',
-            loadData: 'Daten werden geladen. Bitte Warten!',
+            load: 'lädt',
+            loadData: 'Daten werden geladen. Bitte warten!',
             loadFr2Go: 'Lade FR 2Go Konfig',
             noFr: 'kein FR gefunden',
             noPrefix: 'Z/kein Prefix gefunden -',
@@ -863,8 +864,7 @@
             useThisAao: 'Diese ID für den First Responder nutzen.',
             useThisWarn: 'Auswahl verursacht Reload! Alle Fahrzeugauswahlen werden gelöscht! Die FRR AAO kann nicht als First Responder 2Go genutzt werden!',
             vehicleTypes: 'Fahrzeugtypen (Mehrfachauswahl mit Strg + Klick)',
-            version: 'Version',
-            wait: 'warte'
+            version: 'Version'
         }
     };
 
@@ -1194,7 +1194,7 @@
                         <a href="#" aria-role="button" class="btn btn-primary btn-sm" id="frrAlertButton" style="height: 30px;">
                             <img class="icon icons8-Phone-Filled" src="/images/icons8-phone_filled.svg" width="18" height="18" aria-hidden="true">
                             <span aria-hidden="true">First Responder</span>
-                            <span class="badge" aria-hidden="true" id="frrTime">${ t('wait') }</span>
+                            <span class="badge" aria-hidden="true" id="frrTime">${ t('load') }</span>
                         </a>
                         <a href="#" aria-role="button" class="btn btn-warning btn-sm" data-toggle="modal" data-target="#frModal" id="frrOpenModal" style="height: 30px;">
                             <span class="glyphicon glyphicon-cog" style="font-size: 17px;"></span>
