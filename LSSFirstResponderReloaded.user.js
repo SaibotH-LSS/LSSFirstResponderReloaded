@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.1.2
+// @version      3.2.0
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -61,6 +61,8 @@
 // @match        *.larmcentralen-spelet.se/buildings/*/edit
 // @run-at       document-idle
 // @grant        GM_info
+// @grant        GM_getValue
+// @grant        GM_setValue
 // ==/UserScript==
 
 // Definition von globalen Variablen um Fehlermeldungen zu unterdrücken
@@ -74,44 +76,55 @@
     // ######################
 
     function versioning(version) {
-        // Versionssprung von TBD auf 2.0.0 (FRR war noch nicht installiert)
+        // Versionssprung von TBD auf aktuell (FRR war noch nicht installiert)
         if (frrSettings.scriptVersion === "TBD") {
-            // Alte Daten in neuen Speicher laden
-            // firstResponder aus den alten Daten holen und anschließend löschen
-            if (localStorage.getItem("firstResponder")) {
-                const oldData = JSON.parse(localStorage.getItem('firstResponder'));
-                if (frrSettings.vehicleTypes && frrSettings.vehicleTypes.settings && frrSettings.vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
-                    frrSettings.vehicleTypes.settings = oldData.vehicleTypes[sLangRegion];
+            // Migration localStorage zu Tampermonkey Speicher falls localStorage vorhanden ist. Ansonsten Suche Daten von DrTraxx' Script
+            if (localStorage.getItem('frrSettings')) {
+                frrSettings = JSON.parse(localStorage.getItem('frrSettings'))
+                localStorage.removeItem('frrSettings');
+                if (localStorage.getItem('aMissions')) {
+                    localStorage.removeItem('aMissions');
                 }
-                if (frrSettings.aaoId === "00000000" && oldData.aaiID && oldData.aaoId[sLangRegion]) {
-                    frrSettings.aaoId = oldData.aaoId[sLangRegion];
-                    frrSettings.general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
+                // hier noch frrSettings und anderes im LocalStorage löschen!
+            } else {
+                // Alte Daten von DrTraxx' Script in neuen Speicher laden falls vorhanden
+                // firstResponder aus den alten Daten holen und anschließend löschen
+                if (localStorage.getItem("firstResponder")) {
+                    const oldData = JSON.parse(localStorage.getItem('firstResponder'));
+                    if (frrSettings.vehicleTypes && frrSettings.vehicleTypes.settings && frrSettings.vehicleTypes.settings.length === 0 && oldData.vehicleTypes[sLangRegion]) {
+                        frrSettings.vehicleTypes.settings = oldData.vehicleTypes[sLangRegion];
+                    }
+                    if (frrSettings.aaoId === "00000000" && oldData.aaiID && oldData.aaoId[sLangRegion]) {
+                        frrSettings.aaoId = oldData.aaoId[sLangRegion];
+                        frrSettings.general.fWoAao = false; //AAO ist vorhanden daher Nutzung mit AAO
+                    }
+                    // alte Daten nach der Übernahme löschen.
+                    localStorage.removeItem('firstResponder');
                 }
-                // alte Daten nach der Übernahme löschen.
-                localStorage.removeItem('firstResponder');
+                // fr_dispatchSetup aus den alten Daten holen und anschließend löschen
+                if (localStorage.getItem("fr_dispatchSetup")) {
+                    const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
+                    // Dispatch IDs holen
+                    if (frrSettings.allowedBuildingIds.length === 0 && oldData.dispatchId) {
+                        frrSettings.allowedBuildingIds = oldData.dispatchId;
+                    }
+                    // Additional buildings holen
+                    if (frrSettings.addBuildingIds.length === 0 && oldData.additionalBuildings) {
+                        frrSettings.addBuildingIds = oldData.additionalBuildings;
+                    }
+                    // UseIt holen
+                    if (frrSettings.general.fUseDispatch !== oldData.useIt) {
+                        frrSettings.general.fUseDispatch = oldData.useIt;
+                    }
+                    // alte Daten nach der Übernahme löschen.
+                    localStorage.removeItem('fr_dispatchSetup');
+                }
+                if (localStorage.getItem("aVehicleTypesNew")) {
+                    localStorage.removeItem('aVehicleTypesNew');
+                }
+
+                frrSettings.scriptVersion = version;
             }
-            // fr_dispatchSetup aus den alten Daten holen und anschließend löschen
-            if (localStorage.getItem("fr_dispatchSetup")) {
-                const oldData = JSON.parse(localStorage.getItem('fr_dispatchSetup'));
-                // Dispatch IDs holen
-                if (frrSettings.allowedBuildingIds.length === 0 && oldData.dispatchId) {
-                    frrSettings.allowedBuildingIds = oldData.dispatchId;
-                }
-                // Additional buildings holen
-                if (frrSettings.addBuildingIds.length === 0 && oldData.additionalBuildings) {
-                    frrSettings.addBuildingIds = oldData.additionalBuildings;
-                }
-                // UseIt holen
-                if (frrSettings.general.fUseDispatch !== oldData.useIt) {
-                    frrSettings.general.fUseDispatch = oldData.useIt;
-                }
-                // alte Daten nach der Übernahme löschen.
-                localStorage.removeItem('fr_dispatchSetup');
-            }
-            if (localStorage.getItem("aVehicleTypesNew")) {
-                localStorage.removeItem('aVehicleTypesNew');
-            }
-            frrSettings.scriptVersion = version;
         }
         // Versionssprung von 2.0.0 auf 2.1.0
         if (["2.0.0", "2.0.1", "2.0.2"].includes(frrSettings.scriptVersion)) {
@@ -141,10 +154,10 @@
             frrSettings.scriptVersion = '3.1.0';
         }
         // Versionssprung auf aktuelle Version
-        if (['3.1.0', '3.1.1'].includes(frrSettings.scriptVersion)) {
+        if (['3.1.0', '3.1.1', '3.1.2'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
-        // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
+        // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch Umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
         setLogging();
         // Speichern des Versioning
         saveStorage("Versioning");
@@ -405,8 +418,8 @@
     }
 
     // Funktion zum öffnen des Modals (Settings)
-    function openFrrModal() {
-        getStorage();
+    async function openFrrModal() {
+        await getStorage();
         $("#frModalBody").html(
             `<label for="frrSelectGeneralSettings" style="margin-bottom: 0.2em;">${ t('generalSettings') }</label>
                                 <div style="display: flex; flex-direction: column;margin-top: 0;">
@@ -673,14 +686,14 @@
         }
 
         // Missionsdaten abholen falls notwenidg.
-        if(!aMissions || aMissions.lastUpdate < (now - 5 * 60 * 1000)) {
+        if(!aMissions || aMissions.lastUpdate < (now - 60 * 60 * 1000)) {
             try {
                 aMissions = {
                     value: await $.getJSON('/einsaetze.json'),
                     lastUpdate: now
                 };
                 if (fDebuggingOn) console.log(errorText + "Missionsinformationen wurden abgerufen. aMissions: ", aMissions);
-                localStorage.setItem('aMissions', JSON.stringify(aMissions));
+                GM.setValue('aMissions', aMissions);
             } catch(error) {
                 console.error(errorText, "Missionsinfos konnten nicht abgerufen werden. Error: ", error);
             }
@@ -733,14 +746,14 @@
     }
 
     // Daten aus local Storage holen
-    function getStorage(strLocation) {
-        frrSettings = JSON.parse(localStorage.getItem('frrSettings'))
+    async function getStorage(strLocation) {
+        frrSettings = await GM.getValue('frrSettings', undefined);
         if (fLoggingOn) console.log(errorText + "Daten wurden aus local Storage geholt (Aufruf|Daten): ", strLocation, frrSettings);
     }
 
     // Daten in local Storage speichern
-    function saveStorage(strLocation) {
-        localStorage.setItem('frrSettings', JSON.stringify(frrSettings));
+    async function saveStorage(strLocation) {
+        GM.setValue('frrSettings', frrSettings);
         if (fLoggingOn) console.log(errorText + "Daten wurden in local Storage gespeichert (Aufruf|Daten): ", strLocation, frrSettings);
     }
 
@@ -775,7 +788,7 @@
     var objMissionInfo;
     var intCycleCount = 0;
     var fAlrdyThere;
-    var aMissions = JSON.parse(localStorage.getItem('aMissions'));
+    var aMissions = await GM.getValue('aMissions');
     var timerKeyDown = null;
     var iKeyDownTime = 0;
     var objFirstResponder;
@@ -916,7 +929,7 @@
 
     // Definition und Abruf der Variable aus dem local Storage
     var frrSettings;
-    getStorage();
+    await getStorage();
     if (!frrSettings) {
         frrSettings = createSettingsObject()
         saveStorage();
@@ -1271,7 +1284,7 @@
             // Abholen der User Gebäude
             aUserBuildings = await $.getJSON('/api/buildings');
             if (fLoggingOn) console.log(errorText + "Inhalt von aUserBuildings: ", aUserBuildings);
-            openFrrModal();
+            await openFrrModal();
             var modalHeight = $(window).height() - 200;
             $('#frModalBody').css('max-height', modalHeight + 'px');
         });
