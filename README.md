@@ -16,8 +16,11 @@ Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
 
+Release V3.2.1 (27.07.2025):
+- Speicherung der Daten unter Ländercode und User ID da der Tampermonkey nicht pro Webseite speichert sondern global.
+
 Release V3.2.0 (26.07.2025):
-- localStorage gegen den internen Speicher von Tempermonkey ausgetauscht.
+- localStorage gegen den internen Speicher von Tampermonkey ausgetauscht.
 
 Release V3.1.2 (12.04.2025):
 - Fehlerbehebung im Versioning
