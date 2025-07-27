@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.2.0
+// @version      3.2.1
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -61,8 +61,9 @@
 // @match        *.larmcentralen-spelet.se/buildings/*/edit
 // @run-at       document-idle
 // @grant        GM_info
-// @grant        GM_getValue
-// @grant        GM_setValue
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.deleteValue
 // ==/UserScript==
 
 // Definition von globalen Variablen um Fehlermeldungen zu unterdrücken
@@ -75,11 +76,15 @@
     // Funktionsdeklarationen
     // ######################
 
-    function versioning(version) {
+    async function versioning(version) {
         // Versionssprung von TBD auf aktuell (FRR war noch nicht installiert)
         if (frrSettings.scriptVersion === "TBD") {
-            // Migration localStorage zu Tampermonkey Speicher falls localStorage vorhanden ist. Ansonsten Suche Daten von DrTraxx' Script
-            if (localStorage.getItem('frrSettings')) {
+            // Migration localStorage/frrSettings zu Tampermonkey Speicher falls localStorage vorhanden ist. Ansonsten Suche Daten von DrTraxx' Script
+            const tempSet = await GM.getValue('frrSettings', undefined); // Muss wegen 3.2.0 gemacht werden da ich Internationalisierung nicht beachtet habe
+            if (tempSet) {
+                frrSettings = tempSet;
+                GM.deleteValue('frrSettings');
+            } else if (localStorage.getItem('frrSettings')) {
                 frrSettings = JSON.parse(localStorage.getItem('frrSettings'))
                 localStorage.removeItem('frrSettings');
                 if (localStorage.getItem('aMissions')) {
@@ -154,7 +159,7 @@
             frrSettings.scriptVersion = '3.1.0';
         }
         // Versionssprung auf aktuelle Version
-        if (['3.1.0', '3.1.1', '3.1.2'].includes(frrSettings.scriptVersion)) {
+        if (['3.1.0', '3.1.1', '3.1.2', '3.2.0'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
         // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch Umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
@@ -693,7 +698,7 @@
                     lastUpdate: now
                 };
                 if (fDebuggingOn) console.log(errorText + "Missionsinformationen wurden abgerufen. aMissions: ", aMissions);
-                GM.setValue('aMissions', aMissions);
+                await GM.setValue('aMissions', aMissions);
             } catch(error) {
                 console.error(errorText, "Missionsinfos konnten nicht abgerufen werden. Error: ", error);
             }
@@ -747,13 +752,13 @@
 
     // Daten aus local Storage holen
     async function getStorage(strLocation) {
-        frrSettings = await GM.getValue('frrSettings', undefined);
+        frrSettings = await GM.getValue(sRegion + '_' + userId, undefined);
         if (fLoggingOn) console.log(errorText + "Daten wurden aus local Storage geholt (Aufruf|Daten): ", strLocation, frrSettings);
     }
 
     // Daten in local Storage speichern
-    async function saveStorage(strLocation) {
-        GM.setValue('frrSettings', frrSettings);
+    function saveStorage(strLocation) {
+        GM.setValue(sRegion + '_' + userId, frrSettings);
         if (fLoggingOn) console.log(errorText + "Daten wurden in local Storage gespeichert (Aufruf|Daten): ", strLocation, frrSettings);
     }
 
@@ -771,6 +776,23 @@
     function setLogging() {
         fLoggingOn = frrSettings.general.loggingLevel === "complete" || false; // Sollte die Loggingfunktion im Menü nicht eingeschaltet werden können kann hier der generelle Loggingmodus eingeschaltet werden. Standard: false
         fDebuggingOn = frrSettings.general.loggingLevel === "debug" || fLoggingOn;
+    }
+
+    // Funktion zum suchen der eigenen User Id
+    async function getUserId() {
+        try {
+            const response = await fetch('/api/userinfo');
+
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler: ${response.status}`);
+            }
+            const responseObj = await response.json();
+            return responseObj.user_id
+
+        } catch (error) {
+            console.error("Fehler beim Abrufen der API:", error);
+            return -1;
+        }
     }
 
     // ###############
@@ -804,6 +826,7 @@
     const sPathname = window.location.pathname;
     const now = new Date().getTime();
     const errorText = "## FRR ##  ";
+    const userId = await getUserId();
 
     // Definition des Sprachobjekts
     const objTranslations = {
@@ -937,7 +960,7 @@
     }
 
     // Versionierung prüfen
-    if (frrSettings.scriptVersion !== scriptVersion) versioning(scriptVersion);
+    if (frrSettings.scriptVersion !== scriptVersion) await versioning(scriptVersion);
 
     // Logging Variablen setzen
     setLogging();
