@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [LSS]FirstResponderReloaded
 // @namespace    FirstRespond
-// @version      3.2.1
+// @version      3.2.2
 // @description  Wählt das nächstgelegene FirstResponder-Fahrzeug aus (Original von JuMaHo und DrTraxx)
 // @author       SaibotH
 // @license      MIT
@@ -159,7 +159,7 @@
             frrSettings.scriptVersion = '3.1.0';
         }
         // Versionssprung auf aktuelle Version
-        if (['3.1.0', '3.1.1', '3.1.2', '3.2.0'].includes(frrSettings.scriptVersion)) {
+        if (['3.1.0', '3.1.1', '3.1.2', '3.2.0', '3.2.1'].includes(frrSettings.scriptVersion)) {
             frrSettings.scriptVersion = version;
         }
         // Logging Variablen beschreiben falls Versioning gelaufen ist (Durch Umstellung der Speicherung kann das Logging erst nach dem Versioning initalisiert werden.
@@ -298,12 +298,12 @@
     // Holt die Fahrzeugdaten aus der LSSM API ab, verarbeitet diese (Präfix und Fahrzeugnamenliste) und legt diese im local Storage ab.
     async function fetchVehicles() {
         // Daten werden abgerufen und bearbeitet wenn noch keine vorhanden sind oder die Daten zu alt sind
-        if (Object.keys(frrSettings.vehicleTypes.data).length === 0 || frrSettings.vehicleTypes.lastUpdate < (now - 5 * 60 * 1000)) {
+        if (Object.keys(frrSettings.vehicleTypes.data).length === 0 || frrSettings.vehicleTypes.lastUpdate < (Date.now() - 5 * 60 * 1000)) {
 
             // Daten werden abgerufen und über try ... catch Fehler abgefangen.
             try {
                 frrSettings.vehicleTypes.data = await $.getJSON("https://api.lss-manager.de/" + sLangRegion + "/vehicles"); // Ruft die Daten ab. Wenn ein Error kommt wird der folgende Code nicht mehr bearbeitet.
-                frrSettings.vehicleTypes.lastUpdate = now; // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
+                frrSettings.vehicleTypes.lastUpdate = Date.now(); // Setzt den Update Zeitstempel wenn die Daten erfolgreich abgerufen wurden.
 
                 // Prefix hinzufügen
                 if (objBuildingMap[sRegion]) {
@@ -343,7 +343,7 @@
             });
             frrSettings.customVehicleTypes.captionList = Array.from(vehicleTypeSet);
             frrSettings.customVehicleTypes.captionList.sort((a, b) => a.toUpperCase() > b.toUpperCase() ? 1 : -1);
-            frrSettings.customVehicleTypes.lastUpdate = now;
+            frrSettings.customVehicleTypes.lastUpdate = Date.now();
             saveStorage("Eigene Fahrzeugdaten");
         } catch(error) {
             if (error.readyState === 0 && error.statusText === "error") {
@@ -683,29 +683,26 @@
         setTimeout(() => badgeSetting(badgeElement), 100)
     }
 
+    // Abholen aller möglichen Missionen
+    async function getMissions() {
+        let retVal = await GM.getValue('aMissions');
+        try {
+            retVal = {
+                value: await $.getJSON('/einsaetze.json'),
+                lastUpdate: Date.now()
+            };
+            if (fDebuggingOn) console.log(errorText + "Missionsinformationen wurden abgerufen. aMissions: ", retVal);
+            await GM.setValue('aMissions', retVal);
+            return retVal
+        } catch(error) {
+            console.error(errorText, "Missionsinfos konnten nicht abgerufen werden. Error: ", error);
+        }
+    }
+
     // Abholen der Missionsinformationen aus der JSON Datei und suchen des übergebenen Einsatzes
     async function getMissionInfo(missionId) {
-        if (!missionId) {
-            if (fDebuggingOn) console.log(errorText + "Keine MissionsID übergeben!");
-            return undefined;
-        }
-
-        // Missionsdaten abholen falls notwenidg.
-        if(!aMissions || aMissions.lastUpdate < (now - 60 * 60 * 1000)) {
-            try {
-                aMissions = {
-                    value: await $.getJSON('/einsaetze.json'),
-                    lastUpdate: now
-                };
-                if (fDebuggingOn) console.log(errorText + "Missionsinformationen wurden abgerufen. aMissions: ", aMissions);
-                await GM.setValue('aMissions', aMissions);
-            } catch(error) {
-                console.error(errorText, "Missionsinfos konnten nicht abgerufen werden. Error: ", error);
-            }
-        }
-
-        if (!aMissions) {
-            console.error(errorText, "Keine Missionsinformationen vorhanden!");
+        if (!missionId || !aMissions) {
+            console.error(errorText + "Keine MissionsID oder Missionsinformationen übergeben!");
             return undefined;
         }
 
@@ -778,20 +775,17 @@
         fDebuggingOn = frrSettings.general.loggingLevel === "debug" || fLoggingOn;
     }
 
-    // Funktion zum suchen der eigenen User Id
-    async function getUserId() {
-        try {
-            const response = await fetch('/api/userinfo');
+    // Funktion zum suchen der eigenen User Id aus Profil-Link
+    function getUserId(link) {
+        if (!link) return null;
 
-            if (!response.ok) {
-                throw new Error(`HTTP-Fehler: ${response.status}`);
-            }
-            const responseObj = await response.json();
-            return responseObj.user_id
-
-        } catch (error) {
-            console.error("Fehler beim Abrufen der API:", error);
-            return -1;
+        const href = link.getAttribute("href");
+        const match = href.match(/\/profile\/(\d+)/);
+        if (match) {
+            const userID = Number(match[1]);
+            return userID;
+        } else {
+            return null;
         }
     }
 
@@ -824,9 +818,9 @@
     const sLang = (sLangRegion).split('_')[0]; // Nur Sprache
     const sRegion = (sLangRegion).split('_')[1]; // Nur Region
     const sPathname = window.location.pathname;
-    const now = new Date().getTime();
     const errorText = "## FRR ##  ";
-    const userId = await getUserId();
+    // User ID je nach Aufruf setzen:
+    var userId = sPathname === "/" ? getUserId(window.document.getElementById("navbar_profile_link")) : getUserId(window.parent.document.getElementById("navbar_profile_link")); //#########################eigenes Element erstellen?
 
     // Definition des Sprachobjekts
     const objTranslations = {
@@ -972,8 +966,36 @@
         console.error(errorText + "Hier könnte ihr Error stehen", scriptVersion);
     }
 
-    // Reload Counter zurücksetzen und AAO Check
+    // Ausführen auf Hauptseite
     if (window.location.pathname === "/") {
+        const oneHour = 60 * 60 * 1000;
+
+        // Fahrzeuge
+        const vehicleRemaining = oneHour - (Date.now() - frrSettings?.customVehicleTypes?.lastUpdate ?? 0);
+
+        if (vehicleRemaining <= 0) {
+            fetchCustomVehicles();
+            setInterval(fetchCustomVehicles, oneHour);
+        } else {
+            setTimeout(() => {
+                fetchCustomVehicles();
+                setInterval(fetchCustomVehicles, oneHour);
+            }, vehicleRemaining);
+        }
+
+        // Missionen
+        const missionRemaining = oneHour - (Date.now() - (aMissions?.lastUpdate ?? 0));
+
+        if (missionRemaining <= 0) {
+            getMissions();
+            setInterval(getMissions, oneHour);
+        } else {
+            setTimeout(() => {
+                getMissions();
+                setInterval(getMissions, oneHour);
+            }, missionRemaining);
+        }
+
         // Prüfen ob AAO noch existiert
         if (frrSettings.aaoId !== "00000000") {
             const aaoResponse = await fetch(`/api/v1/aaos/${frrSettings.aaoId}`);
@@ -991,8 +1013,8 @@
         saveStorage("Initialisierung auf Hauptseite");
     }
 
-    // Infos bei Missionsfenster abrufen
     if (window.location.pathname.includes("missions")) {
+        // Infos bei Missionsfenster abrufen
         const currMissionId = getMissionId();
         objMissionInfo = await getMissionInfo(currMissionId); //Missionsinfos aus API
         fAlrdyThere = !!document.querySelector(".glyphicon-user"); // Wenn User Icon eingeblendet wird ist schon ein fahrzeug da
@@ -1018,11 +1040,6 @@
                 window.parent.location.reload();
             },10);
         }
-    }
-
-    // Täglicher Abruf der eigenen Fahrzeugtypen
-    if (frrSettings.customVehicleTypes.lastUpdate < (now - 24 * 60 * 60 * 1000)) {
-        await fetchCustomVehicles();
     }
 
     // HTML Code für Modal vorgeben (wird mehrfach genutzt)
