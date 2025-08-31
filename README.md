@@ -16,6 +16,10 @@ Geplante Funktionserweiterungen:
   - Export/Import Funktion (zwecks Backup falls der interne Speicher des Browsers gelöscht wird)
   - Es soll eine Rückfallebene geschaffen werden falls es die API von LSSM zukünftig nicht mehr geben sollte.
 
+Release V3.2.2 (31.08.2025):
+- Entfernen des API Aufrufs zur findung der User ID da dies die Ladezeit im Missions-Fenster verlängert hat
+- Aktualisierung der Daten (Fahrzeuge, Missionen usw.) nur auf der Hauptseite damit dies nicht im Missions-Fenster zu Verzögerungen führt.
+
 Release V3.2.1 (27.07.2025):
 - Speicherung der Daten unter Ländercode und User ID da der Tampermonkey nicht pro Webseite speichert sondern global.
 
